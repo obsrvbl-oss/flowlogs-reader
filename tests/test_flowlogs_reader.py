@@ -1,0 +1,239 @@
+#  Copyright 2015 Observable Networks
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from __future__ import print_function
+
+from calendar import timegm
+from datetime import datetime, timedelta
+from unittest import TestCase
+
+from mock import MagicMock, patch
+
+from flowlogs_reader import FlowRecord, FlowLogReader
+
+
+SAMPLE_RECORDS = [
+    (
+        '2 123456789010 eni-102010ab 198.51.100.1 192.0.2.1 '
+        '443 49152 6 10 840 1439387263 1439387264 ACCEPT OK'
+    ),
+    (
+        '2 123456789010 eni-102010ab 192.0.2.1 198.51.100.1 '
+        '49152 443 6 20 1680 1439387264 1439387265 ACCEPT OK'
+    ),
+    (
+        '2 123456789010 eni-102010ab 192.0.2.1 198.51.100.1 '
+        '49152 443 6 20 1680 1439387265 1439387266 REJECT OK'
+    ),
+]
+
+
+class FlowRecordTestCase(TestCase):
+    def test_parse(self):
+        flow_record = FlowRecord({'message': SAMPLE_RECORDS[0]})
+        actual = {x: getattr(flow_record, x) for x in FlowRecord.__slots__}
+        expected = {
+            'account_id': '123456789010',
+            'action': 'ACCEPT',
+            'bytes': 840,
+            'dstaddr': '192.0.2.1',
+            'dstport': 49152,
+            'end': datetime(2015, 8, 12, 13, 47, 44),
+            'interface_id': 'eni-102010ab',
+            'log_status': 'OK',
+            'packets': 10,
+            'protocol': 6,
+            'srcaddr': '198.51.100.1',
+            'srcport': 443,
+            'start': datetime(2015, 8, 12, 13, 47, 43),
+            'version': 2,
+        }
+        self.assertEqual(actual, expected)
+
+    def test_eq(self):
+        flow_record = FlowRecord({'message': SAMPLE_RECORDS[1]})
+        actual = {x: getattr(flow_record, x) for x in FlowRecord.__slots__}
+        expected = {
+            'account_id': '123456789010',
+            'action': 'ACCEPT',
+            'bytes': 1680,
+            'dstaddr': '198.51.100.1',
+            'dstport': 443,
+            'end': datetime(2015, 8, 12, 13, 47, 45),
+            'interface_id': 'eni-102010ab',
+            'log_status': 'OK',
+            'packets': 20,
+            'protocol': 6,
+            'srcaddr': '192.0.2.1',
+            'srcport': 49152,
+            'start': datetime(2015, 8, 12, 13, 47, 44),
+            'version': 2,
+        }
+        self.assertEqual(actual, expected)
+
+    def test_hash(self):
+        record_set = {
+            FlowRecord.from_message(SAMPLE_RECORDS[0]),
+            FlowRecord.from_message(SAMPLE_RECORDS[0]),
+            FlowRecord.from_message(SAMPLE_RECORDS[1]),
+            FlowRecord.from_message(SAMPLE_RECORDS[1]),
+            FlowRecord.from_message(SAMPLE_RECORDS[2]),
+            FlowRecord.from_message(SAMPLE_RECORDS[2]),
+        }
+        self.assertEqual(len(record_set), 3)
+
+    def test_str(self):
+        flow_record = FlowRecord({'message': SAMPLE_RECORDS[0]})
+        actual = str(flow_record)
+        expected = (
+            'version: 2, account_id: 123456789010, '
+            'interface_id: eni-102010ab, srcaddr: 198.51.100.1, '
+            'dstaddr: 192.0.2.1, srcport: 443, dstport: 49152, protocol: 6, '
+            'packets: 10, bytes: 840, start: 2015-08-12 13:47:43, '
+            'end: 2015-08-12 13:47:44, action: ACCEPT, log_status: OK'
+        )
+        self.assertEqual(actual, expected)
+
+    def test_to_dict(self):
+        flow_record = FlowRecord({'message': SAMPLE_RECORDS[2]})
+        actual = flow_record.to_dict()
+        expected = {
+            'account_id': '123456789010',
+            'action': 'REJECT',
+            'bytes': 1680,
+            'dstaddr': '198.51.100.1',
+            'dstport': 443,
+            'end': datetime(2015, 8, 12, 13, 47, 46),
+            'interface_id': 'eni-102010ab',
+            'log_status': 'OK',
+            'packets': 20,
+            'protocol': 6,
+            'srcaddr': '192.0.2.1',
+            'srcport': 49152,
+            'start': datetime(2015, 8, 12, 13, 47, 45),
+            'version': 2,
+        }
+        self.assertEqual(actual, expected)
+
+    def test_to_message(self):
+        for message in SAMPLE_RECORDS:
+            message_record = FlowRecord.from_message(message)
+            self.assertEqual(message_record.to_message(), message)
+
+    def test_from_message(self):
+        event_record = FlowRecord({'message': SAMPLE_RECORDS[1]})
+        message_record = FlowRecord.from_message(SAMPLE_RECORDS[1])
+        self.assertEqual(event_record, message_record)
+
+
+class FlowLogReaderTestCase(TestCase):
+    @patch('flowlogs_reader.flowlogs_reader.boto3', autospec=True)
+    def setUp(self, mock_boto3):
+        self.mock_client = MagicMock()
+        mock_boto3.client.return_value = self.mock_client
+
+        self.start_time = datetime(2015, 8, 12, 12, 0, 0)
+        self.end_time = datetime(2015, 8, 12, 13, 0, 0)
+
+        self.inst = FlowLogReader(
+            'group_name',
+            start_time=self.start_time,
+            end_time=self.end_time,
+        )
+
+    def test_get_log_stream_data(self):
+        # _get_log_stream_data loops until there is no nextToken and returns a
+        # combined list of all the logStream responses
+        response_list = [
+            {'logStreams': [1, 2, 3], 'nextToken': 'some_token'},
+            {'logStreams': [4, 5, 6]},
+        ]
+
+        def mock_describe(*args, **kwargs):
+            return response_list.pop(0)
+
+        self.mock_client.describe_log_streams.side_effect = mock_describe
+
+        actual = self.inst._get_log_stream_data()
+        expected = [1, 2, 3, 4, 5, 6]
+        self.assertEqual(actual, expected)
+
+    def test_filter_log_streams(self):
+        # _filter_log_streams removes log streams outside the time range
+        ingest_times = [
+            self.start_time - timedelta(seconds=1),  # Outside range
+            self.start_time,  # Inside range
+            self.end_time - timedelta(seconds=1),  # Inside range
+            self.end_time,  # Outside range
+        ]
+        ingest_ms = [timegm(dt.utctimetuple()) * 1000 for dt in ingest_times]
+
+        log_stream_data = [
+            {'lastIngestionTime': ingest_ms[0], 'logStreamName': 'log_0'},
+            {'lastIngestionTime': ingest_ms[1], 'logStreamName': 'log_1'},
+            {'lastIngestionTime': ingest_ms[2], 'logStreamName': 'log_2'},
+            {'lastIngestionTime': ingest_ms[3], 'logStreamName': 'log_3'},
+        ]
+
+        actual = self.inst._filter_log_streams(log_stream_data)
+        expected = ['log_1', 'log_2']
+        self.assertEqual(actual, expected)
+
+    def test_read_stream(self):
+        response_list = [
+            {'events': [0], 'nextForwardToken': 'token_0'},
+            {'events': [1, 2], 'nextForwardToken': 'token_1'},
+            {'events': [3, 4, 5], 'nextForwardToken': 'token_1'},
+            {'events': [6], 'nextForwardToken': 'token_2'},  # Unreachable
+        ]
+
+        def mock_get(*args, **kwargs):
+            return response_list.pop(0)
+
+        self.mock_client.get_log_events.side_effect = mock_get
+
+        actual = list(self.inst._read_stream('some_stream'))
+        expected = [0, 1, 2, 3, 4, 5]
+        self.assertEqual(actual, expected)
+
+    @patch(
+        'flowlogs_reader.flowlogs_reader.FlowLogReader._read_stream',
+        autospec=True
+    )
+    @patch(
+        'flowlogs_reader.flowlogs_reader.FlowLogReader._filter_log_streams',
+        autospec=True
+    )
+    @patch(
+        'flowlogs_reader.flowlogs_reader.FlowLogReader._get_log_stream_data',
+        autospec=True
+    )
+    def test_iteration(self, mock_get, mock_filter, mock_read):
+        def mock_read_stream(self, stream_name):
+            D = {
+                'stream_0': [{'message': SAMPLE_RECORDS[0]}],
+                'stream_1': [
+                    {'message': SAMPLE_RECORDS[1]},
+                    {'message': SAMPLE_RECORDS[2]},
+                ],
+            }
+            return D[stream_name]
+
+        mock_read.side_effect = mock_read_stream
+        mock_filter.return_value = ['stream_0', 'stream_1']
+
+        # Calling list on the instance causes it to iterate through all records
+        actual = list(self.inst)
+        expected = [FlowRecord({'message': x}) for x in SAMPLE_RECORDS]
+        self.assertEqual(actual, expected)
