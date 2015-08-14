@@ -218,10 +218,10 @@ class FlowLogsReaderTestCase(TestCase):
 
     def test_read_stream(self):
         response_list = [
-            {'events': [0], 'nextForwardToken': 'token_0'},
-            {'events': [1, 2], 'nextForwardToken': 'token_1'},
-            {'events': [3, 4, 5], 'nextForwardToken': 'token_1'},
-            {'events': [6], 'nextForwardToken': 'token_2'},  # Unreachable
+            {'events': [0], 'nextBackwardToken': 'token_0'},
+            {'events': [1, 2], 'nextBackwardToken': 'token_1'},
+            {'events': [3, 4, 5], 'nextBackwardToken': 'token_1'},
+            {'events': [6], 'nextBackwardToken': 'token_2'},  # Unreachable
         ]
 
         def mock_get(*args, **kwargs):

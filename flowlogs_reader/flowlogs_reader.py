@@ -195,7 +195,7 @@ class FlowLogsReader(object):
     def _read_stream(self, stream_name):
         # Loops through the pages of the log stream with the given
         # `stream_name`, yielding the events.
-        forward_token = None
+        backward_token = None
         kwargs = {
             'logGroupName': self.log_group_name,
             'logStreamName': stream_name,
@@ -204,17 +204,17 @@ class FlowLogsReader(object):
         }
 
         while True:
-            if forward_token:
-                kwargs['nextToken'] = forward_token
+            if backward_token:
+                kwargs['nextToken'] = backward_token
 
             response = self.logs_client.get_log_events(**kwargs)
             for event in response['events']:
                 yield event
 
-            next_forward_token = response['nextForwardToken']
-            if next_forward_token == forward_token:
+            next_backward_token = response['nextBackwardToken']
+            if next_backward_token == backward_token:
                 break
-            forward_token = next_forward_token
+            backward_token = next_backward_token
 
     def _reader(self):
         # Loops through each log stream and its events, yielding a parsed
