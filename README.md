@@ -68,11 +68,11 @@ And turns it into a Python object like this:
 
 You may use the `FlowLogRecord.from_message(...)` constructor if you have a line of log text instead of an event dictionary.
 
-`FlowLogReader` takes the name of a log group and can then yield all the Flow Log records from that group.
+`FlowLogsReader` takes the name of a log group and can then yield all the Flow Log records from that group.
 
 ```python
->>> from flowlogs_reader import FlowLogReader
-... flow_log_reader = FlowLogReader('flowlog_group')
+>>> from flowlogs_reader import FlowLogsReader
+... flow_log_reader = FlowLogsReader('flowlog_group')
 ... records = list(flow_log_reader)
 ... print(len(records))
 176
@@ -91,7 +91,7 @@ Find all of the IP addresses communicating inside the VPC:
 
 ```python
 ip_set = set()
-for record in FlowLogReader('flowlog_group'):
+for record in FlowLogsReader('flowlog_group'):
     ip_set.add(record.srcaddr)
     ip_set.add(record.dstaddr)
 ```
@@ -101,7 +101,7 @@ See all of the traffic for one IP address:
 ```python
 target_ip = '192.0.2.1'
 records = []
-for record in FlowLogReader('flowlog_group'):
+for record in FlowLogsReader('flowlog_group'):
     if (record.srcaddr == target_ip) or (record.dstaddr == target_ip):
         records.append(record)
 ```

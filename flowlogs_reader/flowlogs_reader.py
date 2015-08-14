@@ -109,7 +109,7 @@ class FlowRecord(object):
         return cls({'message': message})
 
 
-class FlowLogReader(object):
+class FlowLogsReader(object):
     """
     Returns an object that will yield VPC Flow Log records as Python objects.
     * `log_group_name` is the name of the CloudWatch Logs group that stores

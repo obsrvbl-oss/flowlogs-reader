@@ -23,7 +23,7 @@ try:
 except ImportError:
     from mock import MagicMock, patch
 
-from flowlogs_reader import FlowRecord, FlowLogReader
+from flowlogs_reader import FlowRecord, FlowLogsReader
 
 
 SAMPLE_RECORDS = [
@@ -148,7 +148,7 @@ class FlowRecordTestCase(TestCase):
         self.assertEqual(event_record, message_record)
 
 
-class FlowLogReaderTestCase(TestCase):
+class FlowLogsReaderTestCase(TestCase):
     @patch('flowlogs_reader.flowlogs_reader.boto3', autospec=True)
     def setUp(self, mock_boto3):
         self.mock_client = MagicMock()
@@ -157,7 +157,7 @@ class FlowLogReaderTestCase(TestCase):
         self.start_time = datetime(2015, 8, 12, 12, 0, 0)
         self.end_time = datetime(2015, 8, 12, 13, 0, 0)
 
-        self.inst = FlowLogReader(
+        self.inst = FlowLogsReader(
             'group_name',
             start_time=self.start_time,
             end_time=self.end_time,
@@ -234,15 +234,15 @@ class FlowLogReaderTestCase(TestCase):
         self.assertEqual(actual, expected)
 
     @patch(
-        'flowlogs_reader.flowlogs_reader.FlowLogReader._read_stream',
+        'flowlogs_reader.flowlogs_reader.FlowLogsReader._read_stream',
         autospec=True
     )
     @patch(
-        'flowlogs_reader.flowlogs_reader.FlowLogReader._filter_log_streams',
+        'flowlogs_reader.flowlogs_reader.FlowLogsReader._filter_log_streams',
         autospec=True
     )
     @patch(
-        'flowlogs_reader.flowlogs_reader.FlowLogReader._get_log_stream_data',
+        'flowlogs_reader.flowlogs_reader.FlowLogsReader._get_log_stream_data',
         autospec=True
     )
     def test_iteration(self, mock_get, mock_filter, mock_read):
