@@ -201,6 +201,7 @@ class FlowLogsReader(object):
             'logStreamName': stream_name,
             'startTime': self.start_ms,
             'endTime': self.end_ms,
+            'startFromHead': True,
         }
 
         while True:
