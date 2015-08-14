@@ -168,15 +168,14 @@ class FlowLogsReader(object):
         }
 
         while True:
-            if next_token:
-                kwargs['nextToken'] = next_token
-
             response = self.logs_client.filter_log_events(**kwargs)
             for event in response['events']:
                 yield event
 
             next_token = response.get('nextToken')
-            if not next_token:
+            if next_token:
+                kwargs['nextToken'] = next_token
+            else:
                 break
 
     def _reader(self):
