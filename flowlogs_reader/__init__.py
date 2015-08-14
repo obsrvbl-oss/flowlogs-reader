@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .flowlogs_reader import FlowRecord, FlowLogReader  # noqa
+from .flowlogs_reader import FlowRecord, FlowLogsReader  # noqa
 
-__all__ = ['FlowRecord', 'FlowLogReader']
+__all__ = ['FlowRecord', 'FlowLogsReader']

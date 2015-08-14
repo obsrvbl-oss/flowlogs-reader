@@ -18,7 +18,7 @@ import sys
 from argparse import ArgumentParser
 from datetime import datetime
 
-from .flowlogs_reader import FlowLogReader, SKIPDATA, NODATA
+from .flowlogs_reader import FlowLogsReader, SKIPDATA, NODATA
 
 actions = {}
 
@@ -65,7 +65,7 @@ def get_reader(args):
     if args.end_time:
         kwargs['end_time'] = datetime.strptime(args.end_time, time_format)
 
-    return FlowLogReader(log_group_name=args.logGroupName, **kwargs)
+    return FlowLogsReader(log_group_name=args.logGroupName, **kwargs)
 
 
 def main(argv=None):
