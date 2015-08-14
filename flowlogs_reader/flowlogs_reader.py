@@ -115,11 +115,10 @@ class FlowLogsReader(object):
     * `log_group_name` is the name of the CloudWatch Logs group that stores
     your VPC flow logs.
     * `region_name` is the AWS region.
-    * `start_time` is a Python datetime.datetime object; only log streams that
-    were ingested at or after this time will be examined, and only events at
-    or after this time will be yielded.
-    * `end_time` is similar to start time. Only log streams and events after
-    this time will be considered.
+    * `start_time` is a Python datetime.datetime object; only the log events
+    from at or after this time will be considered.
+    * `end_time` is a Python datetime.datetime object; only the log events
+    before this time will be considered.
     * boto_client_kwargs - other keyword arguments to pass to boto3.client
     """
 
