@@ -36,6 +36,14 @@ SAMPLE_RECORDS = [
         '2 123456789010 eni-102010ab 192.0.2.1 198.51.100.1 '
         '49152 443 6 20 1680 1439387265 1439387266 REJECT OK'
     ),
+    (
+        '2 123456789010 eni-1a2b3c4d - - - - - - - '
+        '1431280876 1431280934 - NODATA'
+    ),
+    (
+        '2 123456789010 eni-4b118871 - - - - - - - '
+        '1431280876 1431280934 - SKIPDATA'
+    ),
 ]
 
 
@@ -222,10 +230,14 @@ class FlowLogReaderTestCase(TestCase):
     def test_iteration(self, mock_get, mock_filter, mock_read):
         def mock_read_stream(self, stream_name):
             D = {
-                'stream_0': [{'message': SAMPLE_RECORDS[0]}],
-                'stream_1': [
+                'stream_0': [
+                    {'message': SAMPLE_RECORDS[0]},
                     {'message': SAMPLE_RECORDS[1]},
+                ],
+                'stream_1': [
                     {'message': SAMPLE_RECORDS[2]},
+                    {'message': SAMPLE_RECORDS[3]},
+                    {'message': SAMPLE_RECORDS[4]},
                 ],
             }
             return D[stream_name]

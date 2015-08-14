@@ -19,6 +19,11 @@ from datetime import datetime, timedelta
 
 import boto3
 
+ACCEPT = 'ACCEPT'
+REJECT = 'REJECT'
+SKIPDATA = 'SKIPDATA'
+NODATA = 'NODATA'
+
 
 class FlowRecord(object):
     """
@@ -48,17 +53,28 @@ class FlowRecord(object):
         self.version = int(fields[0])
         self.account_id = fields[1]
         self.interface_id = fields[2]
-        self.srcaddr = fields[3]
-        self.dstaddr = fields[4]
-        self.srcport = int(fields[5])
-        self.dstport = int(fields[6])
-        self.protocol = int(fields[7])
-        self.packets = int(fields[8])
-        self.bytes = int(fields[9])
         self.start = datetime.utcfromtimestamp(int(fields[10]))
         self.end = datetime.utcfromtimestamp(int(fields[11]))
-        self.action = fields[12]
+
         self.log_status = fields[13]
+        if self.log_status in (NODATA, SKIPDATA):
+            self.srcaddr = None
+            self.dstaddr = None
+            self.srcport = None
+            self.dstport = None
+            self.protocol = None
+            self.packets = None
+            self.bytes = None
+            self.action = None
+        else:
+            self.srcaddr = fields[3]
+            self.dstaddr = fields[4]
+            self.srcport = int(fields[5])
+            self.dstport = int(fields[6])
+            self.protocol = int(fields[7])
+            self.packets = int(fields[8])
+            self.bytes = int(fields[9])
+            self.action = fields[12]
 
     def __eq__(self, other):
         return all(
@@ -83,7 +99,7 @@ class FlowRecord(object):
 
         ret = []
         for attr in self.__slots__:
-            transform = D_transform.get(attr, lambda x: str(x))
+            transform = D_transform.get(attr, lambda x: str(x) if x else '-')
             ret.append(transform(getattr(self, attr)))
 
         return ' '.join(ret)
