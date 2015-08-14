@@ -7,8 +7,11 @@ python:
     - "3.4"
 
 install:
-    - pip install --upgrade setuptools
+    - pip install --upgrade setuptools coveralls
     - python setup.py develop
 
 script:
-    - python setup.py test
+    - coverage run --source=flowlogs_reader setup.py test
+
+after_success:
+    - coveralls
