@@ -159,7 +159,6 @@ class FlowLogsReader(object):
         return self.__next__()
 
     def _read_streams(self):
-        next_token = None
         kwargs = {
             'logGroupName': self.log_group_name,
             'startTime': self.start_ms,
@@ -173,7 +172,7 @@ class FlowLogsReader(object):
                 yield event
 
             next_token = response.get('nextToken')
-            if next_token:
+            if next_token is not None:
                 kwargs['nextToken'] = next_token
             else:
                 break
