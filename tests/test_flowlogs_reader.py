@@ -14,8 +14,7 @@
 
 from __future__ import division, print_function
 
-from calendar import timegm
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest import TestCase
 
 try:
@@ -177,99 +176,47 @@ class FlowLogsReaderTestCase(TestCase):
             self.end_time
         )
 
-    def test_get_log_stream_data(self):
-        # _get_log_stream_data loops until there is no nextToken and returns a
-        # combined list of all the logStream responses
+    def test_read_streams(self):
         response_list = [
-            {'logStreams': [1, 2, 3], 'nextToken': 'some_token'},
-            {'logStreams': [4, 5, 6]},
-        ]
-
-        def mock_describe(*args, **kwargs):
-            return response_list.pop(0)
-
-        self.mock_client.describe_log_streams.side_effect = mock_describe
-
-        actual = self.inst._get_log_stream_data()
-        expected = [1, 2, 3, 4, 5, 6]
-        self.assertEqual(actual, expected)
-
-    def test_filter_log_streams(self):
-        # _filter_log_streams removes log streams outside the time range
-        ingest_times = [
-            self.start_time - timedelta(seconds=1),  # Outside range
-            self.start_time,  # Inside range
-            self.end_time - timedelta(seconds=1),  # Inside range
-            self.end_time,  # Outside range
-        ]
-        ingest_ms = [timegm(dt.utctimetuple()) * 1000 for dt in ingest_times]
-
-        log_stream_data = [
-            {'lastIngestionTime': ingest_ms[0], 'logStreamName': 'log_0'},
-            {'lastIngestionTime': ingest_ms[1], 'logStreamName': 'log_1'},
-            {'lastIngestionTime': ingest_ms[2], 'logStreamName': 'log_2'},
-            {'lastIngestionTime': ingest_ms[3], 'logStreamName': 'log_3'},
-            {'logStreamName': 'log_4'},
-        ]
-
-        actual = self.inst._filter_log_streams(log_stream_data)
-        expected = ['log_1', 'log_2']
-        self.assertEqual(actual, expected)
-
-    def test_read_stream(self):
-        response_list = [
-            {'events': [0], 'nextForwardToken': 'token_0'},
-            {'events': [1, 2], 'nextForwardToken': 'token_1'},
-            {'events': [3, 4, 5], 'nextForwardToken': 'token_1'},
+            {'events': [0], 'nextToken': 'token_0'},
+            {'events': [1, 2], 'nextToken': 'token_1'},
+            {'events': [3, 4, 5], 'nextToken': None},
             {'events': [6], 'nextForwardToken': 'token_2'},  # Unreachable
         ]
 
-        def mock_get(*args, **kwargs):
+        def mock_filter(*args, **kwargs):
             return response_list.pop(0)
 
-        self.mock_client.get_log_events.side_effect = mock_get
+        self.mock_client.filter_log_events.side_effect = mock_filter
 
-        actual = list(self.inst._read_stream('some_stream'))
+        actual = list(self.inst._read_streams())
         expected = [0, 1, 2, 3, 4, 5]
         self.assertEqual(actual, expected)
 
-    @patch(
-        'flowlogs_reader.flowlogs_reader.FlowLogsReader._read_stream',
-        autospec=True
-    )
-    @patch(
-        'flowlogs_reader.flowlogs_reader.FlowLogsReader._filter_log_streams',
-        autospec=True
-    )
-    @patch(
-        'flowlogs_reader.flowlogs_reader.FlowLogsReader._get_log_stream_data',
-        autospec=True
-    )
-    def test_iteration(self, mock_get, mock_filter, mock_read):
-        def mock_read_stream(self, stream_name):
-            D = {
-                'stream_0': [
-                    {'message': SAMPLE_RECORDS[0]},
-                    {'message': SAMPLE_RECORDS[1]},
+    def test_iteration(self):
+        response_list = [
+            {
+                'events': [
+                    {'logStreamName': 'log_0', 'message': SAMPLE_RECORDS[0]},
+                    {'logStreamName': 'log_0', 'message': SAMPLE_RECORDS[1]},
                 ],
-                'stream_1': [
-                    {'message': SAMPLE_RECORDS[2]},
-                    {'message': SAMPLE_RECORDS[3]},
-                    {'message': SAMPLE_RECORDS[4]},
+                'nextToken': 'token_0',
+            },
+            {
+                'events': [
+                    {'logStreamName': 'log_0', 'message': SAMPLE_RECORDS[2]},
+                    {'logStreamName': 'log_1', 'message': SAMPLE_RECORDS[3]},
+                    {'logStreamName': 'log_2', 'message': SAMPLE_RECORDS[4]},
                 ],
-            }
-            return D[stream_name]
+            },
+        ]
 
-        mock_read.side_effect = mock_read_stream
-        mock_filter.return_value = ['stream_0', 'stream_1']
+        def mock_filter(*args, **kwargs):
+            return response_list.pop(0)
+
+        self.mock_client.filter_log_events.side_effect = mock_filter
 
         # Calling list on the instance causes it to iterate through all records
         actual = list(self.inst)
-        expected = [FlowRecord({'message': x}) for x in SAMPLE_RECORDS]
-        self.assertEqual(actual, expected)
-
-        # Test Python 2 iteration compatibility
-        iter(self.inst)
-        actual = self.inst.next()
-        expected = FlowRecord.from_message(SAMPLE_RECORDS[0])
+        expected = [FlowRecord.from_message(x) for x in SAMPLE_RECORDS]
         self.assertEqual(actual, expected)
