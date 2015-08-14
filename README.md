@@ -30,7 +30,7 @@ __Note__: The library is still experimental. Give it a try and file an issue or 
 Or combine with other command line utilities:
 
 * `flowlogs_reader flowlog_group | grep REJECT` - print all `REJECT`ed Flow Log records
-* `flowlogs_reader flowlog_group | awk '$6 = 443` - print all traffic from port 443
+* `flowlogs_reader flowlog_group | awk '$6 = 443'` - print all traffic from port 443
 
 ## Module Usage
 
