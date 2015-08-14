@@ -53,17 +53,19 @@ SAMPLE_RECORDS = [FlowRecord.from_message(m) for m in SAMPLE_INPUT]
 class MainTestCase(TestCase):
     def test_main(self, mock_reader):
         main(['mygroup'])
-        mock_reader.assert_called_with('mygroup', region_name='us-east-1')
+        mock_reader.assert_called_with(
+            log_group_name='mygroup', region_name='us-east-1'
+        )
 
         main(['-s', '2015-05-05 14:20:00', 'mygroup'])
         mock_reader.assert_called_with(
-            'mygroup', region_name='us-east-1',
+            log_group_name='mygroup', region_name='us-east-1',
             start_time=datetime(2015, 5, 5, 14, 20)
         )
 
         main(['--end-time', '2015-05-05 14:20:00', 'mygroup'])
         mock_reader.assert_called_with(
-            'mygroup', region_name='us-east-1',
+            log_group_name='mygroup', region_name='us-east-1',
             end_time=datetime(2015, 5, 5, 14, 20)
         )
 
@@ -73,12 +75,13 @@ class MainTestCase(TestCase):
             'mygroup'
         ])
         mock_reader.assert_called_with(
-            'mygroup', region_name='us-east-1', start_time=datetime(2015, 5, 5)
+            log_group_name='mygroup', region_name='us-east-1',
+            start_time=datetime(2015, 5, 5)
         )
 
         main(['--region', 'us-west-1', 'mygroup'])
         mock_reader.assert_called_with(
-            'mygroup', region_name='us-west-1'
+            log_group_name='mygroup', region_name='us-west-1'
         )
 
     @patch('flowlogs_reader.__main__.print', create=True)
