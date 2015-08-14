@@ -118,7 +118,7 @@ class FlowLogReader(object):
     * `start_time` is a Python datetime.datetime object; only log streams that
     were ingested at or after this time will be examined, and only events at
     or after this time will be yielded.
-    * `end_time` is similar to start time. Only log streams and events before
+    * `end_time` is similar to start time. Only log streams and events after
     this time will be considered.
     * boto_client_kwargs - other keyword arguments to pass to boto3.client
     """
@@ -131,8 +131,7 @@ class FlowLogReader(object):
         end_time=None,
         boto_client_kwargs=None
     ):
-        if boto_client_kwargs is None:
-            boto_client_kwargs = {}
+        boto_client_kwargs = boto_client_kwargs or {}
 
         self.logs_client = boto3.client(
             'logs', region_name=region_name, **boto_client_kwargs
