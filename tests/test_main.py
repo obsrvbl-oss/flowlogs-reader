@@ -18,7 +18,10 @@ import io
 from datetime import datetime
 from unittest import TestCase
 
-from mock import patch
+try:
+    from unittest.mock import patch
+except ImportError:
+    from mock import patch
 
 from flowlogs_reader import FlowRecord
 from flowlogs_reader.__main__ import main, actions
@@ -49,8 +52,8 @@ SAMPLE_INPUT = [
 SAMPLE_RECORDS = [FlowRecord.from_message(m) for m in SAMPLE_INPUT]
 
 
-@patch('flowlogs_reader.__main__.FlowLogReader', autospec=True)
 class MainTestCase(TestCase):
+    @patch('flowlogs_reader.__main__.FlowLogReader', autospec=True)
     def test_main(self, mock_reader):
         main(['mygroup'])
         mock_reader.assert_called_with(
@@ -84,6 +87,7 @@ class MainTestCase(TestCase):
             log_group_name='mygroup', region_name='us-west-1'
         )
 
+    @patch('flowlogs_reader.__main__.FlowLogReader', autospec=True)
     @patch('flowlogs_reader.__main__.print', create=True)
     def test_main_print(self, mock_out, mock_reader):
         mock_out.stdout = io.BytesIO()
@@ -94,6 +98,7 @@ class MainTestCase(TestCase):
             line = args[0]
             self.assertEqual(line, record)
 
+    @patch('flowlogs_reader.__main__.FlowLogReader', autospec=True)
     @patch('flowlogs_reader.__main__.print', create=True)
     def test_main_ipset(self, mock_out, mock_reader):
         mock_out.stdout = io.BytesIO()
@@ -117,6 +122,7 @@ class MainTestCase(TestCase):
             actual_set.add(line)
         self.assertEqual(actual_set, expected_set)
 
+    @patch('flowlogs_reader.__main__.FlowLogReader', autospec=True)
     @patch('flowlogs_reader.__main__.print', create=True)
     def test_main_findip(self, mock_out, mock_reader):
         mock_out.stdout = io.BytesIO()
@@ -129,6 +135,7 @@ class MainTestCase(TestCase):
             line = args[0]
             self.assertEqual(line, record)
 
+    @patch('flowlogs_reader.__main__.FlowLogReader', autospec=True)
     @patch('flowlogs_reader.__main__.print', create=True)
     def test_main_bad_action(self, mock_out, mock_reader):
         mock_out.stdout = io.BytesIO()
