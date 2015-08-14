@@ -158,71 +158,29 @@ class FlowLogsReader(object):
         # For Python 2 compatibility
         return self.__next__()
 
-    def _get_log_stream_data(self):
-        # Loops through the pages of logs streams, returning the list of
-        # available streams.
+    def _read_streams(self):
         next_token = None
-        kwargs = {'logGroupName': self.log_group_name}
-        ret = []
+        kwargs = {
+            'logGroupName': self.log_group_name,
+            'startTime': self.start_ms,
+            'endTime': self.end_ms,
+            'interleaved': True,
+        }
 
         while True:
             if next_token:
                 kwargs['nextToken'] = next_token
 
-            response = self.logs_client.describe_log_streams(**kwargs)
-            ret.extend(response['logStreams'])
+            response = self.logs_client.filter_log_events(**kwargs)
+            for event in response['events']:
+                yield event
 
             next_token = response.get('nextToken')
             if not next_token:
                 break
 
-        return ret
-
-    def _filter_log_streams(self, log_stream_data):
-        # Filters out log streams that were ingested before the given
-        # start time or after the given end time.
-        ret = []
-        for log_stream in log_stream_data:
-            last_ingest_time = log_stream.get('lastIngestionTime')
-            if not last_ingest_time:
-                continue
-
-            if self.start_ms <= last_ingest_time < self.end_ms:
-                ret.append(log_stream['logStreamName'])
-
-        return ret
-
-    def _read_stream(self, stream_name):
-        # Loops through the pages of the log stream with the given
-        # `stream_name`, yielding the events.
-        forward_token = None
-        kwargs = {
-            'logGroupName': self.log_group_name,
-            'logStreamName': stream_name,
-            'startTime': self.start_ms,
-            'endTime': self.end_ms,
-            'startFromHead': True,
-        }
-
-        while True:
-            if forward_token:
-                kwargs['nextToken'] = forward_token
-
-            response = self.logs_client.get_log_events(**kwargs)
-            for event in response['events']:
-                yield event
-
-            next_forward_token = response['nextForwardToken']
-            if next_forward_token == forward_token:
-                break
-            forward_token = next_forward_token
-
     def _reader(self):
         # Loops through each log stream and its events, yielding a parsed
         # version of each event.
-        log_stream_data = self._get_log_stream_data()
-        self.log_stream_names = self._filter_log_streams(log_stream_data)
-
-        for stream_name in self.log_stream_names:
-            for event in self._read_stream(stream_name):
-                yield FlowRecord(event)
+        for event in self._read_streams():
+            yield FlowRecord(event)
