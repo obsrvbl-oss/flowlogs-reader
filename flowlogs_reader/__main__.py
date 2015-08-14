@@ -18,7 +18,7 @@ import sys
 from argparse import ArgumentParser
 from datetime import datetime
 
-from .flowlogs_reader import FlowLogReader
+from .flowlogs_reader import FlowLogReader, SKIPDATA, NODATA
 
 actions = {}
 
@@ -34,6 +34,8 @@ def action_ipset(reader, *args):
     """Show the set of IPs seen in Flow Log records."""
     ip_set = set()
     for record in reader:
+        if record.log_status in (SKIPDATA, NODATA):
+            continue
         ip_set.add(record.srcaddr)
         ip_set.add(record.dstaddr)
 
@@ -66,7 +68,8 @@ def get_reader(args):
     return FlowLogReader(log_group_name=args.logGroupName, **kwargs)
 
 
-def main():
+def main(argv=None):
+    argv = argv or sys.argv[1:]
     parser = ArgumentParser(description='Read records from VPC Flow Logs')
     parser.add_argument('logGroupName', type=str,
                         help='name of flow log group to read')
@@ -80,7 +83,7 @@ def main():
                         help='filter stream records before this time')
     parser.add_argument('--time-format', type=str, default='%Y-%m-%d %H:%M:%S',
                         help='format of time to parse')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     action = args.action[0]
     try:
