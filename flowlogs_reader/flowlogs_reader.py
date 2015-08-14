@@ -131,8 +131,7 @@ class FlowLogReader(object):
         end_time=None,
         boto_client_kwargs=None
     ):
-        if boto_client_kwargs is None:
-            boto_client_kwargs = {}
+        boto_client_kwargs = boto_client_kwargs or {}
 
         self.logs_client = boto3.client(
             'logs', region_name=region_name, **boto_client_kwargs

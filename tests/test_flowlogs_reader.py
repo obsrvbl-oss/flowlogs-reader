@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+from __future__ import division, print_function
 
 from calendar import timegm
 from datetime import datetime, timedelta
@@ -160,6 +160,20 @@ class FlowLogReaderTestCase(TestCase):
             end_time=self.end_time,
         )
 
+    def test_init(self):
+        # __init__ sets the log group name and time stamps
+        self.assertEqual(self.inst.log_group_name, 'group_name')
+
+        self.assertEqual(
+            datetime.utcfromtimestamp(self.inst.start_ms // 1000),
+            self.start_time
+        )
+
+        self.assertEqual(
+            datetime.utcfromtimestamp(self.inst.end_ms // 1000),
+            self.end_time
+        )
+
     def test_get_log_stream_data(self):
         # _get_log_stream_data loops until there is no nextToken and returns a
         # combined list of all the logStream responses
@@ -192,6 +206,7 @@ class FlowLogReaderTestCase(TestCase):
             {'lastIngestionTime': ingest_ms[1], 'logStreamName': 'log_1'},
             {'lastIngestionTime': ingest_ms[2], 'logStreamName': 'log_2'},
             {'lastIngestionTime': ingest_ms[3], 'logStreamName': 'log_3'},
+            {'logStreamName': 'log_4'},
         ]
 
         actual = self.inst._filter_log_streams(log_stream_data)
@@ -248,4 +263,10 @@ class FlowLogReaderTestCase(TestCase):
         # Calling list on the instance causes it to iterate through all records
         actual = list(self.inst)
         expected = [FlowRecord({'message': x}) for x in SAMPLE_RECORDS]
+        self.assertEqual(actual, expected)
+
+        # Test Python 2 iteration compatibility
+        iter(self.inst)
+        actual = self.inst.next()
+        expected = FlowRecord.from_message(SAMPLE_RECORDS[0])
         self.assertEqual(actual, expected)
