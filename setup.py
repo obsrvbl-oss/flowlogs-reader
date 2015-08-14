@@ -37,6 +37,11 @@ setup(
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
     ],
+    entry_points={
+        'console_scripts': [
+            'flowlogs_reader = flowlogs_reader.__main__:main',
+        ],
+    },
 
     packages=find_packages(exclude=[]),
     test_suite='tests',
