@@ -18,7 +18,10 @@ from calendar import timegm
 from datetime import datetime, timedelta
 from unittest import TestCase
 
-from mock import MagicMock, patch
+try:
+    from unittest.mock import MagicMock, patch
+except ImportError:
+    from mock import MagicMock, patch
 
 from flowlogs_reader import FlowRecord, FlowLogReader
 
