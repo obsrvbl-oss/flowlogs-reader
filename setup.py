@@ -19,7 +19,7 @@ PY3 = (sys.version_info >= (3,))
 
 setup(
     name='flowlogs_reader',
-    version='0.1',
+    version='0.2',
     license='Apache',
     url='https://github.com/obsrvbl/flowlogs-reader',
 
