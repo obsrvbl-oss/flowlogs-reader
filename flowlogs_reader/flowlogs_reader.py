@@ -19,6 +19,11 @@ from datetime import datetime, timedelta
 
 import boto3
 
+ACCEPT = 'ACCEPT'
+REJECT = 'REJECT'
+SKIPDATA = 'SKIPDATA'
+NODATA = 'NODATA'
+
 
 class FlowRecord(object):
     """
