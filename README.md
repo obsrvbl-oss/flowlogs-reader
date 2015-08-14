@@ -34,7 +34,7 @@ Or combine with other command line utilities:
 
 ## Module Usage
 
-`FlowLogRecord` takes an `event` dictionary retrieved from a log stream. It parses the `message` in the event, which takes a record like this:
+`FlowRecord` takes an `event` dictionary retrieved from a log stream. It parses the `message` in the event, which takes a record like this:
 
 ```
 2 123456789010 eni-102010ab 198.51.100.1 192.0.2.1 443 49152 6 10 840 1439387263 1439387264 ACCEPT OK
@@ -66,7 +66,7 @@ And turns it into a Python object like this:
  'version': 2}
 ```
 
-You may use the `FlowLogRecord.from_message(...)` constructor if you have a line of log text instead of an event dictionary.
+You may use the `FlowRecord.from_message(...)` constructor if you have a line of log text instead of an event dictionary.
 
 `FlowLogsReader` takes the name of a log group and can then yield all the Flow Log records from that group.
 
