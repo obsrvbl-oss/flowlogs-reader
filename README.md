@@ -18,7 +18,21 @@ For information on VPC Flow Logs and how to enable them see [this post](https://
 
 __Note__: The library is still experimental. Give it a try and file an issue or pull request if you have suggestions.
 
-## Usage
+## CLI Usage
+
+`flowlogs-reader` provides a command line interface called `flowlogs_reader` that allows you to print VPC Flow Log records to your screen. It assumes your AWS credentials are available through environment variables, a boto configuration file, or through IAM metadata. Some example uses are:
+
+* `flowlogs_reader flowlog_group` - print all flows in the past hour
+* `flowlogs_reader -s '2015-08-13 00:00:00' -e '2015-08-14 00:00:00' flowlog_group` - print all the flows from August 13, 2015
+* `flowlogs_reader flowlog_group ipset` - print the unique IPs seen in the past hour
+* `flowlogs_reader flowlog_group findip 198.51.100.2` - print all flows involving 198.51.100.2
+
+Or combine with other command line utilities:
+
+* `flowlogs_reader flowlog_group | grep REJECT` - print all `REJECT`ed Flow Log records
+* `flowlogs_reader flowlog_group | awk '$6 = 443` - print all traffic from port 443
+
+## Module Usage
 
 `FlowLogRecord` takes an `event` dictionary retrieved from a log stream. It parses the `message` in the event, which takes a record like this:
 

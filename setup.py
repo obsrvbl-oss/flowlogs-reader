@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 from setuptools import setup, find_packages
+
+PY3 = (sys.version_info >= (3,))
 
 setup(
     name='flowlogs_reader',
@@ -31,16 +34,23 @@ setup(
 
     classifiers=[
         'Intended Audience :: Developers',
+        'Intended Audience :: Information Technology',
+        'Intended Audience :: System Administrators',
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
     ],
+    entry_points={
+        'console_scripts': [
+            'flowlogs_reader = flowlogs_reader.__main__:main',
+        ],
+    },
 
     packages=find_packages(exclude=[]),
     test_suite='tests',
 
     install_requires=['botocore', 'boto3'],
-    tests_require=['mock'],
+    tests_require=['mock'] if PY3 else [],
 )
