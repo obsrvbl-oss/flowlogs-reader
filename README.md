@@ -30,7 +30,7 @@ Or if you want to install from source and/or contribute you can clone from GitHu
 ```
 git clone https://github.com/obsrvbl/flowlogs-reader.git
 cd flowlogs-reader
-python setup.py install
+python setup.py develop
 ```
 
 ## CLI Usage
