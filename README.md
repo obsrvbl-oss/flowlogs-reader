@@ -95,7 +95,7 @@ You may use the `FlowRecord.from_message(...)` constructor if you have a line of
 
 By default it will retrieve records from log streams that were ingested in the last hour, and yield records from those log streams in that same time window.
 
-You can control what's retrieve with these parameters:
+You can control what's retrieved with these parameters:
 * `region_name` is a string like `'us-east-1'`
 * `start_time` and `end_time` are Python `datetime.datetime` objects
 * `boto_client_kwargs` is a dictionary of parameters to pass to `boto3.client`
