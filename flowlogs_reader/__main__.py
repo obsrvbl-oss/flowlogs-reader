@@ -65,6 +65,9 @@ def get_reader(args):
     if args.end_time:
         kwargs['end_time'] = datetime.strptime(args.end_time, time_format)
 
+    if args.only_complete:
+        kwargs['only_complete'] = args.only_complete
+
     return FlowLogsReader(log_group_name=args.logGroupName, **kwargs)
 
 
@@ -81,6 +84,12 @@ def main(argv=None):
                         help='filter stream records at or after this time')
     parser.add_argument('--end-time', '-e', type=str,
                         help='filter stream records before this time')
+    parser.add_argument(
+        '--only-complete',
+        '-c',
+        action='store_true',
+        help='filter log streams that may not yet have finished processing',
+    )
     parser.add_argument('--time-format', type=str, default='%Y-%m-%d %H:%M:%S',
                         help='format of time to parse')
     args = parser.parse_args(argv)
