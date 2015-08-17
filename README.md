@@ -93,12 +93,16 @@ You may use the `FlowRecord.from_message(...)` constructor if you have a line of
 176
 ```
 
-By default it will retrieve records from log streams that were ingested in the last hour, and yield records from those log streams in that same time window.
+By default it will yield records from the last hour. However, you can control what's retrieved with these parameters:
 
-You can control what's retrieved with these parameters:
-* `region_name` is a string like `'us-east-1'`
-* `start_time` and `end_time` are Python `datetime.datetime` objects
-* `boto_client_kwargs` is a dictionary of parameters to pass to `boto3.client`
+* `region_name` is a string like `'us-east-1'`.
+* `start_time` is a Python `datetime.datetime` object. Only records with a `timestamp` attribute at or after this time will be considered. The default is one hour ago.
+* `end_time` is a Python `datetime.datetime` object. Only records with a `timestamp` attribute before this time will be considered. The default is the current time.
+* `only_complete` is a boolean. If set, only log streams that have been written to after `end_time` will be considered. The default is `False`.
+* `boto_client_kwargs` is a dictionary of parameters to pass to `boto3.client`.
+
+Set `only_complete` if you want to make sure that all the records from your time window have been fully processed.
+According to the [AWS documentation](http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html#flow-log-records) it can be several minutes before a record is written to a log stream.
 
 ## Examples
 
