@@ -119,6 +119,8 @@ class FlowLogsReader(object):
     from at or after this time will be considered.
     * `end_time` is a Python datetime.datetime object; only the log events
     before this time will be considered.
+    * `only_complete` is either True or False. If True, only log streams that
+    have been written to after `end_time` will be considered.
     * boto_client_kwargs - other keyword arguments to pass to boto3.client
     """
 
@@ -128,6 +130,7 @@ class FlowLogsReader(object):
         region_name='us-east-1',
         start_time=None,
         end_time=None,
+        only_complete=False,
         boto_client_kwargs=None
     ):
         boto_client_kwargs = boto_client_kwargs or {}
@@ -137,6 +140,7 @@ class FlowLogsReader(object):
         )
 
         self.log_group_name = log_group_name
+        self.only_complete = only_complete
 
         # If no time filters are given use the last hour
         now = datetime.utcnow()
@@ -157,13 +161,40 @@ class FlowLogsReader(object):
         # For Python 2 compatibility
         return self.__next__()
 
-    def _read_streams(self):
+    def _get_ready_streams(self):
+        # Loops through the pages of logs streams, returning the names of
+        # streams that have been written to since self.end_time
+        kwargs = {'logGroupName': self.log_group_name}
+        ret = []
+
+        while True:
+            response = self.logs_client.describe_log_streams(**kwargs)
+
+            for log_stream in response['logStreams']:
+                last_ingest_time = log_stream.get('lastIngestionTime')
+                if not last_ingest_time:
+                    continue
+
+                if last_ingest_time > self.end_ms:
+                    ret.append(log_stream['logStreamName'])
+
+            next_token = response.get('nextToken')
+            if next_token:
+                kwargs['nextToken'] = next_token
+            else:
+                break
+
+        return ret
+
+    def _read_streams(self, log_streams=None):
         kwargs = {
             'logGroupName': self.log_group_name,
             'startTime': self.start_ms,
             'endTime': self.end_ms,
             'interleaved': True,
         }
+        if log_streams is not None:
+            kwargs['logStreamNames'] = log_streams
 
         while True:
             response = self.logs_client.filter_log_events(**kwargs)
@@ -177,7 +208,9 @@ class FlowLogsReader(object):
                 break
 
     def _reader(self):
+        log_streams = self._get_ready_streams() if self.only_complete else None
+
         # Loops through each log stream and its events, yielding a parsed
         # version of each event.
-        for event in self._read_streams():
+        for event in self._read_streams(log_streams):
             yield FlowRecord(event)

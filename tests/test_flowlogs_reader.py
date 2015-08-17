@@ -160,11 +160,13 @@ class FlowLogsReaderTestCase(TestCase):
             'group_name',
             start_time=self.start_time,
             end_time=self.end_time,
+            only_complete=False,
         )
 
     def test_init(self):
-        # __init__ sets the log group name and time stamps
         self.assertEqual(self.inst.log_group_name, 'group_name')
+
+        self.assertFalse(self.inst.only_complete)
 
         self.assertEqual(
             datetime.utcfromtimestamp(self.inst.start_ms // 1000),
@@ -175,6 +177,46 @@ class FlowLogsReaderTestCase(TestCase):
             datetime.utcfromtimestamp(self.inst.end_ms // 1000),
             self.end_time
         )
+
+    def test_get_ready_streams(self):
+        ancient = self.inst.end_ms
+        earlier = self.inst.end_ms
+        modern = self.inst.end_ms + 1
+        later = self.inst.end_ms + 2
+
+        response_list = [
+            # log_2 will be returned
+            {
+                'logStreams': [
+                    {'logStreamName': 'log_0', 'lastIngestionTime': ancient},
+                    {'logStreamName': 'log_1', 'lastIngestionTime': earlier},
+                    {'logStreamName': 'log_2', 'lastIngestionTime': modern},
+                ],
+                'nextToken': 'some_token'
+            },
+            # log_4 will be returned
+            {
+                'logStreams': [
+                    {'logStreamName': 'log_3', 'lastIngestionTime': earlier},
+                    {'logStreamName': 'log_4', 'lastIngestionTime': later},
+                ],
+            },
+            # Unreachable because the last entry had no nextToken
+            {
+                'logStreams': [
+                    {'logStreamName': 'log_5', 'lastIngestionTime': modern},
+                ],
+            },
+        ]
+
+        def mock_describe(*args, **kwargs):
+            return response_list.pop(0)
+
+        self.mock_client.describe_log_streams.side_effect = mock_describe
+
+        actual = self.inst._get_ready_streams()
+        expected = ['log_2', 'log_4']
+        self.assertEqual(actual, expected)
 
     def test_read_streams(self):
         response_list = [
@@ -220,3 +262,21 @@ class FlowLogsReaderTestCase(TestCase):
         actual = list(self.inst)
         expected = [FlowRecord.from_message(x) for x in SAMPLE_RECORDS]
         self.assertEqual(actual, expected)
+
+    def test_iteration_only_complete(self):
+        # Make sure when only_complete is set that we call filter_log_events
+        # with the proper keyword argument
+        self.inst.only_complete = True
+
+        self.inst._get_ready_streams = lambda: ['log_0', 'log_1']
+        self.mock_client.filter_log_events.return_value = {'events': []}
+
+        list(self.inst)
+
+        self.mock_client.filter_log_events.assert_called_once_with(
+            logGroupName=self.inst.log_group_name,
+            startTime=self.inst.start_ms,
+            endTime=self.inst.end_ms,
+            interleaved=True,
+            logStreamNames=['log_0', 'log_1'],
+        )
