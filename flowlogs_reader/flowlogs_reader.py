@@ -18,6 +18,10 @@ from calendar import timegm
 from datetime import datetime, timedelta
 
 import boto3
+from botocore.exceptions import NoRegionError
+
+
+DEFAULT_REGION_NAME = 'us-east-1'
 
 ACCEPT = 'ACCEPT'
 REJECT = 'REJECT'
@@ -125,16 +129,26 @@ class FlowLogsReader(object):
     def __init__(
         self,
         log_group_name,
-        region_name='us-east-1',
+        region_name=None,
         start_time=None,
         end_time=None,
         boto_client_kwargs=None
     ):
         boto_client_kwargs = boto_client_kwargs or {}
 
-        self.logs_client = boto3.client(
-            'logs', region_name=region_name, **boto_client_kwargs
-        )
+        # If a specific region is requested, use it.
+        # If not, try to use the environment's configuration (i.e. the
+        # AWS_DEFAULT_REGION variable of ~/.aws/config file).
+        # If that doesn't work, use a default region.
+        if region_name is not None:
+            boto_client_kwargs['region_name'] = region_name
+            self.logs_client = boto3.client('logs', **boto_client_kwargs)
+        else:
+            try:
+                self.logs_client = boto3.client('logs', **boto_client_kwargs)
+            except NoRegionError:
+                boto_client_kwargs['region_name'] = DEFAULT_REGION_NAME
+                self.logs_client = boto3.client('logs', **boto_client_kwargs)
 
         self.log_group_name = log_group_name
 
