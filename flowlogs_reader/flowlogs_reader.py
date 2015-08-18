@@ -135,6 +135,7 @@ class FlowLogsReader(object):
         start_time=None,
         end_time=None,
         only_complete=False,
+        log_stream_prefix=None,
         boto_client_kwargs=None
     ):
         boto_client_kwargs = boto_client_kwargs or {}
@@ -154,7 +155,12 @@ class FlowLogsReader(object):
                 self.logs_client = boto3.client('logs', **boto_client_kwargs)
 
         self.log_group_name = log_group_name
+
+        # If either only_complete or log_stream_prefix are set we will do
+        # additional filtering.
+        self.should_filter_streams = only_complete or log_stream_prefix
         self.only_complete = only_complete
+        self.log_stream_prefix = log_stream_prefix
 
         # If no time filters are given use the last hour
         now = datetime.utcnow()
@@ -175,25 +181,33 @@ class FlowLogsReader(object):
         # For Python 2 compatibility
         return self.__next__()
 
-    def _is_stream_complete(self, log_stream):
-        last_ingest_time = log_stream.get('lastIngestionTime')
+    def _is_stream_complete(self, stream):
+        # Returns True if `stream` has been written to since self.end_time
+        last_ingest_time = stream.get('lastIngestionTime')
         if not last_ingest_time:
             return False
 
         return last_ingest_time > self.end_ms
 
-    def _get_ready_streams(self):
-        # Loops through the pages of logs streams, returning the names of
-        # streams that have been written to since self.end_time
-        kwargs = {'logGroupName': self.log_group_name}
+    def _filter_streams(self):
+        # Loops through the pages of logs streams, returning a list of ones
+        # that match the specified filters
         ret = []
+
+        kwargs = {'logGroupName': self.log_group_name}
+        if self.log_stream_prefix:
+            kwargs['logStreamNamePrefix'] = self.log_stream_prefix
 
         while True:
             response = self.logs_client.describe_log_streams(**kwargs)
 
-            for log_stream in response['logStreams']:
-                if self._is_stream_complete(log_stream):
-                    ret.append(log_stream['logStreamName'])
+            for stream in response['logStreams']:
+                should_add = True
+                if self.only_complete and not self._is_stream_complete(stream):
+                    should_add = False
+
+                if should_add:
+                    ret.append(stream['logStreamName'])
 
             next_token = response.get('nextToken')
             if next_token:
@@ -225,7 +239,11 @@ class FlowLogsReader(object):
                 break
 
     def _reader(self):
-        log_streams = self._get_ready_streams() if self.only_complete else None
+        # If we are filtering by ingestion time or log stream name, get a list
+        # of log streams to consider.
+        log_streams = None
+        if self.should_filter_streams:
+            log_streams = self._filter_streams()
 
         # Loops through each log stream and its events, yielding a parsed
         # version of each event.

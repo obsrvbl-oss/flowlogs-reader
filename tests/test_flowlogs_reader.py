@@ -202,6 +202,9 @@ class FlowLogsReaderTestCase(TestCase):
         mock_client.assert_called_with('logs', region_name=DEFAULT_REGION_NAME)
 
     def test_get_ready_streams(self):
+        self.inst.only_complete = True
+        self.inst.should_filter_streams = True
+
         ancient = self.inst.end_ms
         earlier = self.inst.end_ms
         modern = self.inst.end_ms + 1
@@ -237,7 +240,7 @@ class FlowLogsReaderTestCase(TestCase):
 
         self.mock_client.describe_log_streams.side_effect = mock_describe
 
-        actual = self.inst._get_ready_streams()
+        actual = self.inst._filter_streams()
         expected = ['log_2', 'log_4']
         self.assertEqual(actual, expected)
 
@@ -290,8 +293,9 @@ class FlowLogsReaderTestCase(TestCase):
         # Make sure when only_complete is set that we call filter_log_events
         # with the proper keyword argument
         self.inst.only_complete = True
+        self.inst.should_filter_streams = True
 
-        self.inst._get_ready_streams = lambda: ['log_0', 'log_1']
+        self.inst._filter_streams = lambda: ['log_0', 'log_1']
         self.mock_client.filter_log_events.return_value = {'events': []}
 
         list(self.inst)
