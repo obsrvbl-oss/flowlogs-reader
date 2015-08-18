@@ -132,7 +132,8 @@ class FlowLogsReader(object):
         region_name=None,
         start_time=None,
         end_time=None,
-        boto_client_kwargs=None
+        boto_client_kwargs=None,
+        interfaces=None
     ):
         boto_client_kwargs = boto_client_kwargs or {}
 
@@ -151,6 +152,7 @@ class FlowLogsReader(object):
                 self.logs_client = boto3.client('logs', **boto_client_kwargs)
 
         self.log_group_name = log_group_name
+        self.interfaces = interfaces
 
         # If no time filters are given use the last hour
         now = datetime.utcnow()
@@ -178,6 +180,28 @@ class FlowLogsReader(object):
             'endTime': self.end_ms,
             'interleaved': True,
         }
+        if self.interfaces:
+            kw = {
+                'logGroupName': self.log_group_name,
+            }
+            log_stream_names = []
+            while True:
+                response = self.logs_client.describe_log_streams(**kw)
+                for stream in response['logStreams']:
+                    name = stream['logStreamName']
+                    parts = name.rsplit('-', 1)
+                    if parts[0] in self.interfaces:
+                        log_stream_names.append(name)
+                next_token = response.get('nextToken')
+                if next_token is not None:
+                    kw['nextToken'] = next_token
+                else:
+                    break
+
+            if not log_stream_names:
+                # nothing to match
+                return
+            kwargs['logStreamNames'] = log_stream_names
 
         while True:
             response = self.logs_client.filter_log_events(**kwargs)
