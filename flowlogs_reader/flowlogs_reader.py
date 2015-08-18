@@ -175,6 +175,13 @@ class FlowLogsReader(object):
         # For Python 2 compatibility
         return self.__next__()
 
+    def _is_stream_complete(self, log_stream):
+        last_ingest_time = log_stream.get('lastIngestionTime')
+        if not last_ingest_time:
+            return False
+
+        return last_ingest_time > self.end_ms
+
     def _get_ready_streams(self):
         # Loops through the pages of logs streams, returning the names of
         # streams that have been written to since self.end_time
@@ -185,11 +192,7 @@ class FlowLogsReader(object):
             response = self.logs_client.describe_log_streams(**kwargs)
 
             for log_stream in response['logStreams']:
-                last_ingest_time = log_stream.get('lastIngestionTime')
-                if not last_ingest_time:
-                    continue
-
-                if last_ingest_time > self.end_ms:
+                if self._is_stream_complete(log_stream):
                     ret.append(log_stream['logStreamName'])
 
             next_token = response.get('nextToken')
