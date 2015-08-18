@@ -201,49 +201,6 @@ class FlowLogsReaderTestCase(TestCase):
         FlowLogsReader('some_group')
         mock_client.assert_called_with('logs', region_name=DEFAULT_REGION_NAME)
 
-    def test_get_ready_streams(self):
-        self.inst.only_complete = True
-        self.inst.should_filter_streams = True
-
-        ancient = self.inst.end_ms
-        earlier = self.inst.end_ms
-        modern = self.inst.end_ms + 1
-        later = self.inst.end_ms + 2
-
-        response_list = [
-            # log_2 will be returned
-            {
-                'logStreams': [
-                    {'logStreamName': 'log_0', 'lastIngestionTime': ancient},
-                    {'logStreamName': 'log_1', 'lastIngestionTime': earlier},
-                    {'logStreamName': 'log_2', 'lastIngestionTime': modern},
-                ],
-                'nextToken': 'some_token'
-            },
-            # log_4 will be returned
-            {
-                'logStreams': [
-                    {'logStreamName': 'log_3', 'lastIngestionTime': earlier},
-                    {'logStreamName': 'log_4', 'lastIngestionTime': later},
-                ],
-            },
-            # Unreachable because the last entry had no nextToken
-            {
-                'logStreams': [
-                    {'logStreamName': 'log_5', 'lastIngestionTime': modern},
-                ],
-            },
-        ]
-
-        def mock_describe(*args, **kwargs):
-            return response_list.pop(0)
-
-        self.mock_client.describe_log_streams.side_effect = mock_describe
-
-        actual = self.inst._filter_streams()
-        expected = ['log_2', 'log_4']
-        self.assertEqual(actual, expected)
-
     def test_read_streams(self):
         response_list = [
             {'events': [0], 'nextToken': 'token_0'},
@@ -290,20 +247,89 @@ class FlowLogsReaderTestCase(TestCase):
         self.assertEqual(actual, expected)
 
     def test_iteration_only_complete(self):
-        # Make sure when only_complete is set that we call filter_log_events
-        # with the proper keyword argument
+        # Tests to make sure incomplete logs aren't considered when
+        # only_complete is set.
         self.inst.only_complete = True
         self.inst.should_filter_streams = True
 
-        self.inst._filter_streams = lambda: ['log_0', 'log_1']
+        ancient = self.inst.end_ms
+        earlier = self.inst.end_ms
+        modern = self.inst.end_ms + 1
+
+        response_list = [
+            # log_2 will be returned
+            {
+                'logStreams': [
+                    {'logStreamName': 'new_log'},
+                    {'logStreamName': 'log_0', 'lastIngestionTime': ancient},
+                    {'logStreamName': 'log_1', 'lastIngestionTime': earlier},
+                    {'logStreamName': 'log_2', 'lastIngestionTime': modern},
+                ],
+                'nextToken': 'some_token'
+            },
+            # log_4 will be returned
+            {
+                'logStreams': [
+                    {'logStreamName': 'log_3', 'lastIngestionTime': earlier},
+                    {'logStreamName': 'log_4', 'lastIngestionTime': modern},
+                ],
+            },
+            # Unreachable because the last entry had no nextToken
+            {
+                'logStreams': [
+                    {'logStreamName': 'log_5', 'lastIngestionTime': modern},
+                ],
+            },
+        ]
+
+        def mock_describe(*args, **kwargs):
+            return response_list.pop(0)
+
+        self.mock_client.describe_log_streams.side_effect = mock_describe
         self.mock_client.filter_log_events.return_value = {'events': []}
 
         list(self.inst)
 
+        # Did we ask for the correct log group?
+        call_args_list = self.mock_client.describe_log_streams.call_args_list
+        for args, kwargs in call_args_list:
+            self.assertEqual(kwargs['logGroupName'], self.inst.log_group_name)
+
+        # Did we ask for the correct log streams?
         self.mock_client.filter_log_events.assert_called_once_with(
             logGroupName=self.inst.log_group_name,
             startTime=self.inst.start_ms,
             endTime=self.inst.end_ms,
             interleaved=True,
-            logStreamNames=['log_0', 'log_1'],
+            logStreamNames=['log_2', 'log_4'],
+        )
+
+    def test_iteration_with_prefix(self):
+        # Tests to make sure we ask for logs with the given prefix when
+        # log_stream_prefix is set.
+        self.inst.log_stream_prefix = 'eni-something'
+        self.inst.should_filter_streams = True
+
+        self.mock_client.describe_log_streams.return_value = {
+            'logStreams': [{'logStreamName': 'log_0'}]
+        }
+        self.mock_client.filter_log_events.return_value = {'events': []}
+
+        list(self.inst)
+
+        # Did we ask for the correct log group and prefix?
+        call_args_list = self.mock_client.describe_log_streams.call_args_list
+        for args, kwargs in call_args_list:
+            self.assertEqual(kwargs['logGroupName'], self.inst.log_group_name)
+            self.assertEqual(
+                kwargs['logStreamNamePrefix'], self.inst.log_stream_prefix
+            )
+
+        # Did we ask for the correct log streams?
+        self.mock_client.filter_log_events.assert_called_once_with(
+            logGroupName=self.inst.log_group_name,
+            startTime=self.inst.start_ms,
+            endTime=self.inst.end_ms,
+            interleaved=True,
+            logStreamNames=['log_0'],
         )
