@@ -17,12 +17,16 @@ from __future__ import division, print_function
 from datetime import datetime
 from unittest import TestCase
 
+
+from botocore.exceptions import NoRegionError
+
 try:
     from unittest.mock import MagicMock, patch
 except ImportError:
     from mock import MagicMock, patch
 
 from flowlogs_reader import FlowRecord, FlowLogsReader
+from flowlogs_reader.flowlogs_reader import DEFAULT_REGION_NAME
 
 
 SAMPLE_RECORDS = [
@@ -163,7 +167,6 @@ class FlowLogsReaderTestCase(TestCase):
         )
 
     def test_init(self):
-        # __init__ sets the log group name and time stamps
         self.assertEqual(self.inst.log_group_name, 'group_name')
 
         self.assertEqual(
@@ -175,6 +178,25 @@ class FlowLogsReaderTestCase(TestCase):
             datetime.utcfromtimestamp(self.inst.end_ms // 1000),
             self.end_time
         )
+
+    @patch('flowlogs_reader.flowlogs_reader.boto3.client', autospec=True)
+    def test_region(self, mock_client):
+        # Region specified
+        FlowLogsReader('some_group', region_name='some-region')
+        mock_client.assert_called_with('logs', region_name='some-region')
+
+        # No region specified - assume configuration file worked
+        FlowLogsReader('some_group')
+        mock_client.assert_called_with('logs')
+
+        # No region specified and no configuration file
+        def mock_response(*args, **kwargs):
+            if 'region_name' not in kwargs:
+                raise NoRegionError
+
+        mock_client.side_effect = mock_response
+        FlowLogsReader('some_group')
+        mock_client.assert_called_with('logs', region_name=DEFAULT_REGION_NAME)
 
     def test_read_streams(self):
         response_list = [
