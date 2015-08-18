@@ -35,7 +35,9 @@ python setup.py develop
 
 ## CLI Usage
 
-`flowlogs-reader` provides a command line interface called `flowlogs_reader` that allows you to print VPC Flow Log records to your screen. It assumes your AWS credentials are available through environment variables, a boto configuration file, or through IAM metadata. Some example uses are:
+`flowlogs-reader` provides a command line interface called `flowlogs_reader` that allows you to print VPC Flow Log records to your screen.
+It assumes your AWS credentials are available through environment variables, a boto configuration file, or through IAM metadata.
+Some example uses are:
 
 * `flowlogs_reader flowlog_group` - print all flows in the past hour
 * `flowlogs_reader -s '2015-08-13 00:00:00' -e '2015-08-14 00:00:00' flowlog_group` - print all the flows from August 13, 2015
@@ -99,6 +101,7 @@ By default it will yield records from the last hour. However, you can control wh
 * `start_time` is a Python `datetime.datetime` object. Only records with a `timestamp` attribute at or after this time will be considered. The default is one hour ago.
 * `end_time` is a Python `datetime.datetime` object. Only records with a `timestamp` attribute before this time will be considered. The default is the current time.
 * `only_complete` is a boolean. If set, only log streams that have been written to after `end_time` will be considered. The default is `False`.
+* `log_stream_prefix` is a string. If set, only log streams whose names start with the given prefix will be considered.
 * `boto_client_kwargs` is a dictionary of parameters to pass to `boto3.client`.
 
 Set `only_complete` if you want to make sure that all the records from your time window have been fully processed.
