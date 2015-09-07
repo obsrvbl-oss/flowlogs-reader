@@ -158,23 +158,17 @@ class FlowLogsReader(object):
         return self.__next__()
 
     def _read_streams(self):
-        kwargs = {
-            'logGroupName': self.log_group_name,
-            'startTime': self.start_ms,
-            'endTime': self.end_ms,
-            'interleaved': True,
-        }
+        paginator = self.logs_client.get_paginator('filter_log_events')
+        response_iterator = paginator.paginate(
+            logGroupName=self.log_group_name,
+            startTime=self.start_ms,
+            endTime=self.end_ms,
+            interleaved=True,
+        )
 
-        while True:
-            response = self.logs_client.filter_log_events(**kwargs)
-            for event in response['events']:
+        for page in response_iterator:
+            for event in page['events']:
                 yield event
-
-            next_token = response.get('nextToken')
-            if next_token is not None:
-                kwargs['nextToken'] = next_token
-            else:
-                break
 
     def _reader(self):
         # Loops through each log stream and its events, yielding a parsed

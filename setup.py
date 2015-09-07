@@ -51,6 +51,6 @@ setup(
     packages=find_packages(exclude=[]),
     test_suite='tests',
 
-    install_requires=['botocore', 'boto3'],
+    install_requires=['botocore>=1.2.0', 'boto3>=1.1.3'],
     tests_require=['mock'] if PY3 else [],
 )
