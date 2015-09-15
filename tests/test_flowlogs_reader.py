@@ -199,30 +199,25 @@ class FlowLogsReaderTestCase(TestCase):
         mock_client.assert_called_with('logs', region_name=DEFAULT_REGION_NAME)
 
     def test_read_streams(self):
-        response_list = [
-            {'events': [0], 'nextToken': 'token_0'},
-            {'events': [1, 2], 'nextToken': 'token_1'},
-            {'events': [3, 4, 5], 'nextToken': None},
-            {'events': [6], 'nextForwardToken': 'token_2'},  # Unreachable
+        paginator = MagicMock()
+        paginator.paginate.return_value = [
+            {'events': [0]}, {'events': [1, 2]}, {'events': [3, 4, 5]},
         ]
 
-        def mock_filter(*args, **kwargs):
-            return response_list.pop(0)
-
-        self.mock_client.filter_log_events.side_effect = mock_filter
+        self.mock_client.get_paginator.return_value = paginator
 
         actual = list(self.inst._read_streams())
         expected = [0, 1, 2, 3, 4, 5]
         self.assertEqual(actual, expected)
 
     def test_iteration(self):
-        response_list = [
+        paginator = MagicMock()
+        paginator.paginate.return_value = [
             {
                 'events': [
                     {'logStreamName': 'log_0', 'message': SAMPLE_RECORDS[0]},
                     {'logStreamName': 'log_0', 'message': SAMPLE_RECORDS[1]},
                 ],
-                'nextToken': 'token_0',
             },
             {
                 'events': [
@@ -233,10 +228,7 @@ class FlowLogsReaderTestCase(TestCase):
             },
         ]
 
-        def mock_filter(*args, **kwargs):
-            return response_list.pop(0)
-
-        self.mock_client.filter_log_events.side_effect = mock_filter
+        self.mock_client.get_paginator.return_value = paginator
 
         # Calling list on the instance causes it to iterate through all records
         actual = list(self.inst)
