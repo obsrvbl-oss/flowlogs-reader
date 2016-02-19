@@ -137,6 +137,7 @@ class FlowLogsReader(object):
         boto_client_kwargs=None
     ):
         boto_client_kwargs = boto_client_kwargs or {}
+        boto_client_kwargs = boto_client_kwargs.copy()
         session_kwargs = {}
 
         # If a region_name is specified, use that for the session
