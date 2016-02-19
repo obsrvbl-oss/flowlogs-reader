@@ -135,21 +135,18 @@ class FlowLogsReader(object):
         boto_client_kwargs=None
     ):
         boto_client_kwargs = boto_client_kwargs or {}
+        session_kwargs = {}
 
-        # If a specific region is requested, use it.
-        # If not, try to use the environment's configuration (i.e. the
-        # AWS_DEFAULT_REGION variable of ~/.aws/config file).
-        # If that doesn't work, use a default region.
+        # If a region_name is specified, use that for the session
+        # If not, check boto_client_kwargs for one
+        # If neither of those, use their environment (i.e. don't pass it)
         if region_name is not None:
-            boto_client_kwargs['region_name'] = region_name
-            self.logs_client = boto3.client('logs', **boto_client_kwargs)
-        else:
-            try:
-                self.logs_client = boto3.client('logs', **boto_client_kwargs)
-            except NoRegionError:
-                boto_client_kwargs['region_name'] = DEFAULT_REGION_NAME
-                self.logs_client = boto3.client('logs', **boto_client_kwargs)
+            session_kwargs['region_name'] = region_name
+        elif 'region_name' in boto_client_kwargs:
+            session_kwargs['region_name'] = boto_client_kwargs['region_name']
 
+        session = boto3.session.Session(**session_kwargs)
+        self.logs_client = session.client('logs', **boto_client_kwargs)
         self.log_group_name = log_group_name
 
         # If no time filters are given use the last hour
