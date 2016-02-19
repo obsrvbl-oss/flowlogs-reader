@@ -119,6 +119,7 @@ class FlowLogsReader(object):
     * `log_group_name` is the name of the CloudWatch Logs group that stores
     your VPC flow logs.
     * `region_name` is the AWS region.
+    * `profile_name` is the AWS boto3 configuration profile to use.
     * `start_time` is a Python datetime.datetime object; only the log events
     from at or after this time will be considered.
     * `end_time` is a Python datetime.datetime object; only the log events
@@ -130,26 +131,35 @@ class FlowLogsReader(object):
         self,
         log_group_name,
         region_name=None,
+        profile_name=None,
         start_time=None,
         end_time=None,
         boto_client_kwargs=None
     ):
         boto_client_kwargs = boto_client_kwargs or {}
+        boto_client_kwargs = boto_client_kwargs.copy()
+        session_kwargs = {}
 
-        # If a specific region is requested, use it.
-        # If not, try to use the environment's configuration (i.e. the
-        # AWS_DEFAULT_REGION variable of ~/.aws/config file).
-        # If that doesn't work, use a default region.
+        # If a region_name is specified, use that for the session
+        # If not, check boto_client_kwargs for one
+        # If neither of those, use their environment (i.e. don't pass it)
         if region_name is not None:
-            boto_client_kwargs['region_name'] = region_name
-            self.logs_client = boto3.client('logs', **boto_client_kwargs)
-        else:
-            try:
-                self.logs_client = boto3.client('logs', **boto_client_kwargs)
-            except NoRegionError:
-                boto_client_kwargs['region_name'] = DEFAULT_REGION_NAME
-                self.logs_client = boto3.client('logs', **boto_client_kwargs)
+            session_kwargs['region_name'] = region_name
+        elif 'region_name' in boto_client_kwargs:
+            region_name = boto_client_kwargs.pop('region_name')
+            session_kwargs['region_name'] = region_name
 
+        if profile_name is not None:
+            session_kwargs['profile_name'] = profile_name
+
+        session = boto3.session.Session(**session_kwargs)
+        try:
+            self.logs_client = session.client('logs', **boto_client_kwargs)
+        except NoRegionError:
+            # If all else fails, just connect to the default region
+            self.logs_client = session.client(
+                'logs', region_name=DEFAULT_REGION_NAME, **boto_client_kwargs
+            )
         self.log_group_name = log_group_name
 
         # If no time filters are given use the last hour

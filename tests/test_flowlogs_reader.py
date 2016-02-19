@@ -154,8 +154,10 @@ class FlowRecordTestCase(TestCase):
 class FlowLogsReaderTestCase(TestCase):
     @patch('flowlogs_reader.flowlogs_reader.boto3', autospec=True)
     def setUp(self, mock_boto3):
+        self.mock_session = MagicMock()
+        mock_boto3.session.Session.return_value = self.mock_session
         self.mock_client = MagicMock()
-        mock_boto3.client.return_value = self.mock_client
+        self.mock_session.client.return_value = self.mock_client
 
         self.start_time = datetime(2015, 8, 12, 12, 0, 0)
         self.end_time = datetime(2015, 8, 12, 13, 0, 0)
@@ -179,24 +181,41 @@ class FlowLogsReaderTestCase(TestCase):
             self.end_time
         )
 
-    @patch('flowlogs_reader.flowlogs_reader.boto3.client', autospec=True)
-    def test_region(self, mock_client):
+    @patch('flowlogs_reader.flowlogs_reader.boto3.session', autospec=True)
+    def test_region_name(self, mock_session):
         # Region specified
         FlowLogsReader('some_group', region_name='some-region')
-        mock_client.assert_called_with('logs', region_name='some-region')
+        mock_session.Session.assert_called_with(region_name='some-region')
 
         # No region specified - assume configuration file worked
         FlowLogsReader('some_group')
-        mock_client.assert_called_with('logs')
+        mock_session.Session.assert_called_with()
+
+        # Region specified in boto_client_kwargs
+        FlowLogsReader(
+            'some_group', boto_client_kwargs={'region_name': 'my-region'}
+        )
+        mock_session.Session.assert_called_with(region_name='my-region')
 
         # No region specified and no configuration file
         def mock_response(*args, **kwargs):
             if 'region_name' not in kwargs:
                 raise NoRegionError
-
-        mock_client.side_effect = mock_response
+        mock_session.Session().client.side_effect = mock_response
         FlowLogsReader('some_group')
-        mock_client.assert_called_with('logs', region_name=DEFAULT_REGION_NAME)
+        mock_session.Session().client.assert_called_with(
+            'logs', region_name=DEFAULT_REGION_NAME
+        )
+
+    @patch('flowlogs_reader.flowlogs_reader.boto3.session', autospec=True)
+    def test_profile_name(self, mock_session):
+        # profile_name specified
+        FlowLogsReader('some_group', profile_name='my-profile')
+        mock_session.Session.assert_called_with(profile_name='my-profile')
+
+        # No profile specified
+        FlowLogsReader('some_group')
+        mock_session.Session.assert_called_with()
 
     def test_read_streams(self):
         paginator = MagicMock()

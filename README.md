@@ -97,6 +97,7 @@ By default it will retrieve records from log streams that were ingested in the l
 
 You can control what's retrieved with these parameters:
 * `region_name` is a string like `'us-east-1'`
+* `profile_name` is a string like `'my-profile'`
 * `start_time` and `end_time` are Python `datetime.datetime` objects
 * `boto_client_kwargs` is a dictionary of parameters to pass to `boto3.client`
 
@@ -119,4 +120,15 @@ records = []
 for record in FlowLogsReader('flowlog_group'):
     if (record.srcaddr == target_ip) or (record.dstaddr == target_ip):
         records.append(record)
+```
+
+Loop through a few preconfigured profiles and collect all of the IP addresses:
+
+```python
+ip_set = set()
+profile_names = ['profile1', 'profile2']
+for profile_name in profile_names:
+    for record in FlowLogsReader('flowlog_group', profile_name=profile_name):
+        ip_set.add(record.srcaddr)
+        ip_set.add(record.dstaddr)
 ```

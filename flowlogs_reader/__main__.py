@@ -55,7 +55,8 @@ actions['findip'] = action_findip
 
 def get_reader(args):
     kwargs = {
-        'region_name': args.region,
+        'region_name': args.region or None,
+        'profile_name': args.profile or None
     }
     time_format = args.time_format
 
@@ -75,7 +76,9 @@ def main(argv=None):
                         help='name of flow log group to read')
     parser.add_argument('action', type=str, nargs='*', default=['print'],
                         help='action to take on log records')
-    parser.add_argument('--region', type=str, default='us-east-1',
+    parser.add_argument('--profile', type=str, default='',
+                        help='boto3 configuration profile to use')
+    parser.add_argument('--region', type=str, default='',
                         help='AWS region the Log Group is in')
     parser.add_argument('--start-time', '-s', type=str,
                         help='filter stream records at or after this time')
