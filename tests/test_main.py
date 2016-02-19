@@ -57,19 +57,19 @@ class MainTestCase(TestCase):
     def test_main(self, mock_reader):
         main(['mygroup'])
         mock_reader.assert_called_with(
-            log_group_name='mygroup', region_name='us-east-1'
+            log_group_name='mygroup', region_name=None, profile_name=None
         )
 
         main(['-s', '2015-05-05 14:20:00', 'mygroup'])
         mock_reader.assert_called_with(
-            log_group_name='mygroup', region_name='us-east-1',
-            start_time=datetime(2015, 5, 5, 14, 20)
+            log_group_name='mygroup', region_name=None,
+            start_time=datetime(2015, 5, 5, 14, 20), profile_name=None
         )
 
         main(['--end-time', '2015-05-05 14:20:00', 'mygroup'])
         mock_reader.assert_called_with(
-            log_group_name='mygroup', region_name='us-east-1',
-            end_time=datetime(2015, 5, 5, 14, 20)
+            log_group_name='mygroup', region_name=None,
+            end_time=datetime(2015, 5, 5, 14, 20), profile_name=None
         )
 
         main([
@@ -78,13 +78,20 @@ class MainTestCase(TestCase):
             'mygroup'
         ])
         mock_reader.assert_called_with(
-            log_group_name='mygroup', region_name='us-east-1',
-            start_time=datetime(2015, 5, 5)
+            log_group_name='mygroup', region_name=None,
+            start_time=datetime(2015, 5, 5), profile_name=None
         )
 
         main(['--region', 'us-west-1', 'mygroup'])
         mock_reader.assert_called_with(
-            log_group_name='mygroup', region_name='us-west-1'
+            log_group_name='mygroup', region_name='us-west-1',
+            profile_name=None
+        )
+
+        main(['--profile', 'my-profile', 'mygroup'])
+        mock_reader.assert_called_with(
+            log_group_name='mygroup', region_name=None,
+            profile_name='my-profile'
         )
 
     @patch('flowlogs_reader.__main__.FlowLogsReader', autospec=True)

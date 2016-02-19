@@ -18,7 +18,10 @@ from calendar import timegm
 from datetime import datetime, timedelta
 
 import boto3
+from botocore.exceptions import NoRegionError
 
+
+DEFAULT_REGION_NAME = 'us-east-1'
 
 ACCEPT = 'ACCEPT'
 REJECT = 'REJECT'
@@ -116,6 +119,7 @@ class FlowLogsReader(object):
     * `log_group_name` is the name of the CloudWatch Logs group that stores
     your VPC flow logs.
     * `region_name` is the AWS region.
+    * `profile_name` is the AWS boto3 configuration profile to use.
     * `start_time` is a Python datetime.datetime object; only the log events
     from at or after this time will be considered.
     * `end_time` is a Python datetime.datetime object; only the log events
@@ -127,6 +131,7 @@ class FlowLogsReader(object):
         self,
         log_group_name,
         region_name=None,
+        profile_name=None,
         start_time=None,
         end_time=None,
         boto_client_kwargs=None
@@ -142,8 +147,17 @@ class FlowLogsReader(object):
         elif 'region_name' in boto_client_kwargs:
             session_kwargs['region_name'] = boto_client_kwargs['region_name']
 
+        if profile_name is not None:
+            session_kwargs['profile_name'] = profile_name
+
         session = boto3.session.Session(**session_kwargs)
-        self.logs_client = session.client('logs', **boto_client_kwargs)
+        try:
+            self.logs_client = session.client('logs', **boto_client_kwargs)
+        except NoRegionError:
+            # If all else fails, just connect to the default region
+            self.logs_client = session.client(
+                'logs', region_name=DEFAULT_REGION_NAME, **boto_client_kwargs
+            )
         self.log_group_name = log_group_name
 
         # If no time filters are given use the last hour

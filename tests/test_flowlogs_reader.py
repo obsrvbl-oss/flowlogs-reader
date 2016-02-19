@@ -18,12 +18,15 @@ from datetime import datetime
 from unittest import TestCase
 
 
+from botocore.exceptions import NoRegionError
+
 try:
     from unittest.mock import MagicMock, patch
 except ImportError:
     from mock import MagicMock, patch
 
 from flowlogs_reader import FlowRecord, FlowLogsReader
+from flowlogs_reader.flowlogs_reader import DEFAULT_REGION_NAME
 
 
 SAMPLE_RECORDS = [
@@ -179,12 +182,38 @@ class FlowLogsReaderTestCase(TestCase):
         )
 
     @patch('flowlogs_reader.flowlogs_reader.boto3.session', autospec=True)
-    def test_region(self, mock_session):
+    def test_region_name(self, mock_session):
         # Region specified
         FlowLogsReader('some_group', region_name='some-region')
         mock_session.Session.assert_called_with(region_name='some-region')
 
         # No region specified - assume configuration file worked
+        FlowLogsReader('some_group')
+        mock_session.Session.assert_called_with()
+
+        # Region specified in boto_client_kwargs
+        FlowLogsReader(
+            'some_group', boto_client_kwargs={'region_name': 'my-region'}
+        )
+        mock_session.Session.assert_called_with(region_name='my-region')
+
+        # No region specified and no configuration file
+        def mock_response(*args, **kwargs):
+            if 'region_name' not in kwargs:
+                raise NoRegionError
+        mock_session.Session().client.side_effect = mock_response
+        FlowLogsReader('some_group')
+        mock_session.Session().client.assert_called_with(
+            'logs', region_name=DEFAULT_REGION_NAME
+        )
+
+    @patch('flowlogs_reader.flowlogs_reader.boto3.session', autospec=True)
+    def test_profile_name(self, mock_session):
+        # profile_name specified
+        FlowLogsReader('some_group', profile_name='my-profile')
+        mock_session.Session.assert_called_with(profile_name='my-profile')
+
+        # No profile specified
         FlowLogsReader('some_group')
         mock_session.Session.assert_called_with()
 
