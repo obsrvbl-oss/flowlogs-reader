@@ -18,10 +18,7 @@ from calendar import timegm
 from datetime import datetime, timedelta
 
 import boto3
-from botocore.exceptions import NoRegionError
 
-
-DEFAULT_REGION_NAME = 'us-east-1'
 
 ACCEPT = 'ACCEPT'
 REJECT = 'REJECT'

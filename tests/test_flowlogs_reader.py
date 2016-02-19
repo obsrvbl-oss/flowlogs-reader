@@ -18,15 +18,12 @@ from datetime import datetime
 from unittest import TestCase
 
 
-from botocore.exceptions import NoRegionError
-
 try:
     from unittest.mock import MagicMock, patch
 except ImportError:
     from mock import MagicMock, patch
 
 from flowlogs_reader import FlowRecord, FlowLogsReader
-from flowlogs_reader.flowlogs_reader import DEFAULT_REGION_NAME
 
 
 SAMPLE_RECORDS = [
@@ -154,8 +151,10 @@ class FlowRecordTestCase(TestCase):
 class FlowLogsReaderTestCase(TestCase):
     @patch('flowlogs_reader.flowlogs_reader.boto3', autospec=True)
     def setUp(self, mock_boto3):
+        self.mock_session = MagicMock()
+        mock_boto3.session.Session.return_value = self.mock_session
         self.mock_client = MagicMock()
-        mock_boto3.client.return_value = self.mock_client
+        self.mock_session.client.return_value = self.mock_client
 
         self.start_time = datetime(2015, 8, 12, 12, 0, 0)
         self.end_time = datetime(2015, 8, 12, 13, 0, 0)
@@ -179,24 +178,15 @@ class FlowLogsReaderTestCase(TestCase):
             self.end_time
         )
 
-    @patch('flowlogs_reader.flowlogs_reader.boto3.client', autospec=True)
-    def test_region(self, mock_client):
+    @patch('flowlogs_reader.flowlogs_reader.boto3.session', autospec=True)
+    def test_region(self, mock_session):
         # Region specified
         FlowLogsReader('some_group', region_name='some-region')
-        mock_client.assert_called_with('logs', region_name='some-region')
+        mock_session.Session.assert_called_with(region_name='some-region')
 
         # No region specified - assume configuration file worked
         FlowLogsReader('some_group')
-        mock_client.assert_called_with('logs')
-
-        # No region specified and no configuration file
-        def mock_response(*args, **kwargs):
-            if 'region_name' not in kwargs:
-                raise NoRegionError
-
-        mock_client.side_effect = mock_response
-        FlowLogsReader('some_group')
-        mock_client.assert_called_with('logs', region_name=DEFAULT_REGION_NAME)
+        mock_session.Session.assert_called_with()
 
     def test_read_streams(self):
         paginator = MagicMock()
