@@ -145,7 +145,8 @@ class FlowLogsReader(object):
         if region_name is not None:
             session_kwargs['region_name'] = region_name
         elif 'region_name' in boto_client_kwargs:
-            session_kwargs['region_name'] = boto_client_kwargs['region_name']
+            region_name = boto_client_kwargs.pop('region_name')
+            session_kwargs['region_name'] = region_name
 
         if profile_name is not None:
             session_kwargs['profile_name'] = profile_name
