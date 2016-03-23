@@ -99,6 +99,7 @@ You can control what's retrieved with these parameters:
 * `region_name` is a string like `'us-east-1'`
 * `profile_name` is a string like `'my-profile'`
 * `start_time` and `end_time` are Python `datetime.datetime` objects
+* `filter_pattern` is a string like ``REJECT`` or ``443``
 * `boto_client_kwargs` is a dictionary of parameters to pass to `boto3.client`
 
 ## Examples
