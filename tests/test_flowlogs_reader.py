@@ -166,6 +166,7 @@ class FlowLogsReaderTestCase(TestCase):
             'group_name',
             start_time=self.start_time,
             end_time=self.end_time,
+            filter_pattern='REJECT'
         )
 
     def test_init(self):
@@ -180,6 +181,11 @@ class FlowLogsReaderTestCase(TestCase):
             datetime.utcfromtimestamp(self.inst.end_ms // 1000),
             self.end_time
         )
+
+        self.assertEqual(
+            self.inst.paginator_kwargs['filterPattern'],
+            'REJECT'
+            )
 
     @patch('flowlogs_reader.flowlogs_reader.boto3.session', autospec=True)
     def test_region_name(self, mock_session):

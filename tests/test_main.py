@@ -94,6 +94,12 @@ class MainTestCase(TestCase):
             profile_name='my-profile'
         )
 
+        main(['--filter-pattern', 'REJECT', 'mygroup'])
+        mock_reader.assert_called_with(
+            log_group_name='mygroup', region_name=None,
+            profile_name=None, filter_pattern='REJECT'
+        )
+
     @patch('flowlogs_reader.__main__.FlowLogsReader', autospec=True)
     @patch('flowlogs_reader.__main__.print', create=True)
     def test_main_print(self, mock_out, mock_reader):

@@ -124,6 +124,7 @@ class FlowLogsReader(object):
     from at or after this time will be considered.
     * `end_time` is a Python datetime.datetime object; only the log events
     before this time will be considered.
+    * `filter_pattern` is a string passed to CloudWatch as a FilterPattern
     * boto_client_kwargs - other keyword arguments to pass to boto3.client
     """
 
@@ -134,6 +135,7 @@ class FlowLogsReader(object):
         profile_name=None,
         start_time=None,
         end_time=None,
+        filter_pattern=None,
         boto_client_kwargs=None
     ):
         boto_client_kwargs = boto_client_kwargs or {}
@@ -162,6 +164,11 @@ class FlowLogsReader(object):
             )
         self.log_group_name = log_group_name
 
+        self.paginator_kwargs = {}
+
+        if filter_pattern is not None:
+            self.paginator_kwargs['filterPattern'] = filter_pattern
+
         # If no time filters are given use the last hour
         now = datetime.utcnow()
         start_time = start_time or now - timedelta(hours=1)
@@ -188,6 +195,7 @@ class FlowLogsReader(object):
             startTime=self.start_ms,
             endTime=self.end_ms,
             interleaved=True,
+            **self.paginator_kwargs
         )
 
         for page in response_iterator:
