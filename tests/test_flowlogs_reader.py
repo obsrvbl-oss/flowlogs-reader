@@ -185,7 +185,7 @@ class FlowLogsReaderTestCase(TestCase):
         self.assertEqual(
             self.inst.paginator_kwargs['filterPattern'],
             'REJECT'
-            )
+        )
 
     @patch('flowlogs_reader.flowlogs_reader.boto3.session', autospec=True)
     def test_region_name(self, mock_session):
