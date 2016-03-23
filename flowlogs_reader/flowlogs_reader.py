@@ -124,7 +124,7 @@ class FlowLogsReader(object):
     from at or after this time will be considered.
     * `end_time` is a Python datetime.datetime object; only the log events
     before this time will be considered.
-    * `filter_pattern` is a string passed to CloudWatch as a FilterPattern
+    * `filter_pattern` is a string passed to CloudWatch as a filter pattern
     * boto_client_kwargs - other keyword arguments to pass to boto3.client
     """
 

@@ -99,7 +99,7 @@ You can control what's retrieved with these parameters:
 * `region_name` is a string like `'us-east-1'`
 * `profile_name` is a string like `'my-profile'`
 * `start_time` and `end_time` are Python `datetime.datetime` objects
-* `filter_pattern` is a string like ``REJECT`` or ``443``
+* `filter_pattern` is a string like `REJECT` or `443` used to filter the logs. See the examples below.
 * `boto_client_kwargs` is a dictionary of parameters to pass to `boto3.client`
 
 ## Examples
@@ -132,4 +132,21 @@ for profile_name in profile_names:
     for record in FlowLogsReader('flowlog_group', profile_name=profile_name):
         ip_set.add(record.srcaddr)
         ip_set.add(record.dstaddr)
+```
+
+Apply a filter for UDP traffic that was logged normally.
+
+```python
+from flowlogs_reader import FlowLogsReader
+
+
+FILTER_PATTERN = (
+    '[version="2", account_id, interface_id, srcaddr, dstaddr, '
+    'srcport, dstport, protocol="17", packets, bytes, '
+    'start, end, action, log_status="OK"]'
+)
+
+flow_log_reader = FlowLogsReader('flowlog_group', filter_pattern=FILTER_PATTERN)
+records = list(flow_log_reader)
+print(len(records))
 ```
