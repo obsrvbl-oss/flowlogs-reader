@@ -21,6 +21,11 @@ import boto3
 from botocore.exceptions import NoRegionError
 
 
+DEFAULT_FILTER_PATTERN = (
+    '[version="2", account_id, interface_id, srcaddr, dstaddr, '
+    'srcport, dstport, protocol, packets, bytes, '
+    'start, end, action, log_status]'
+)
 DEFAULT_REGION_NAME = 'us-east-1'
 
 ACCEPT = 'ACCEPT'
@@ -135,7 +140,7 @@ class FlowLogsReader(object):
         profile_name=None,
         start_time=None,
         end_time=None,
-        filter_pattern=None,
+        filter_pattern=DEFAULT_FILTER_PATTERN,
         boto_client_kwargs=None
     ):
         boto_client_kwargs = boto_client_kwargs or {}
@@ -177,8 +182,9 @@ class FlowLogsReader(object):
         self.start_ms = timegm(start_time.utctimetuple()) * 1000
         self.end_ms = timegm(end_time.utctimetuple()) * 1000
 
-    def __iter__(self):
         self.iterator = self._reader()
+
+    def __iter__(self):
         return self
 
     def __next__(self):
