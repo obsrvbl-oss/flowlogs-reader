@@ -256,6 +256,6 @@ class FlowLogsReaderTestCase(TestCase):
         self.mock_client.get_paginator.return_value = paginator
 
         # Calling list on the instance causes it to iterate through all records
-        actual = list(self.inst)
+        actual = [next(self.inst)] + list(self.inst)
         expected = [FlowRecord.from_message(x) for x in SAMPLE_RECORDS]
         self.assertEqual(actual, expected)

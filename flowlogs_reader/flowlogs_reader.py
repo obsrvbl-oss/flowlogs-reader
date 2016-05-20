@@ -177,8 +177,9 @@ class FlowLogsReader(object):
         self.start_ms = timegm(start_time.utctimetuple()) * 1000
         self.end_ms = timegm(end_time.utctimetuple()) * 1000
 
-    def __iter__(self):
         self.iterator = self._reader()
+
+    def __iter__(self):
         return self
 
     def __next__(self):
