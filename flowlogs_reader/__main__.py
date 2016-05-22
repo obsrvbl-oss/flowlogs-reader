@@ -25,8 +25,18 @@ actions = {}
 
 def action_print(reader, *args):
     """Simply print the Flow Log records to output."""
-    for record in reader:
+    arg_count = len(args)
+    if arg_count == 0:
+        stop_after = 0
+    elif arg_count == 1:
+        stop_after = int(args[0])
+    else:
+        raise RuntimeError("0 or 1 arguments expected for action 'print'")
+
+    for i, record in enumerate(reader, 1):
         print(record.to_message())
+        if i == stop_after:
+            break
 actions['print'] = action_print
 
 
