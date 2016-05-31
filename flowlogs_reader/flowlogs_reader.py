@@ -130,7 +130,9 @@ class FlowLogsReader(object):
     * `end_time` is a Python datetime.datetime object; only the log events
     before this time will be considered.
     * `filter_pattern` is a string passed to CloudWatch as a filter pattern
-    * boto_client_kwargs - other keyword arguments to pass to boto3.client
+    * `boto_client_kwargs` - keyword arguments to pass to the boto3 client
+    * `boto_client` - your own boto3 client object. If given then region_name,
+    profile_name, and boto_client_kwargs will be ignored.
     """
 
     def __init__(
@@ -178,17 +180,14 @@ class FlowLogsReader(object):
         return self.__next__()
 
     def _get_client(self, region_name, profile_name, boto_client_kwargs):
-        if boto_client_kwargs is not None:
-            client_kwargs = boto_client_kwargs.copy()
-        else:
-            client_kwargs = {}
-
         session_kwargs = {}
         if region_name is not None:
             session_kwargs['region_name'] = region_name
 
         if profile_name is not None:
             session_kwargs['profile_name'] = profile_name
+
+        client_kwargs = boto_client_kwargs or {}
 
         session = boto3.session.Session(**session_kwargs)
         try:

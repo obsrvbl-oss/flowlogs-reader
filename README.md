@@ -97,11 +97,12 @@ You may use the `FlowRecord.from_message(...)` constructor if you have a line of
 By default it will retrieve records from log streams that were ingested in the last hour, and yield records from those log streams in that same time window.
 
 You can control what's retrieved with these parameters:
-* `region_name` is a string like `'us-east-1'`
-* `profile_name` is a string like `'my-profile'`
 * `start_time` and `end_time` are Python `datetime.datetime` objects
 * `filter_pattern` is a string like `REJECT` or `443` used to filter the logs. See the examples below.
-* `boto_client_kwargs` is a dictionary of parameters to pass to `boto3.client`
+* `region_name` is a string like `'us-east-1'`. This will be used to create a [boto3 Session object](http://boto3.readthedocs.io/en/latest/reference/core/session.html#boto3.session.Session).
+* `profile_name` is a string like `'my-profile'`
+* `boto_client_kwargs` is a dictionary of parameters to pass when creating the [boto3 client](http://boto3.readthedocs.io/en/latest/reference/core/session.html#boto3.session.Session.client).
+* `boto_client` is a boto3 client object. This takes overrides `region_name`, `profile_name`, and `boto_client_kwargs`.
 
 ## Examples
 
