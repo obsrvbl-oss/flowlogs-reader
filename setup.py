@@ -15,11 +15,11 @@
 import sys
 from setuptools import setup, find_packages
 
-PY3 = (sys.version_info >= (3,))
+PY2 = sys.version_info[0] == 2
 
 setup(
     name='flowlogs_reader',
-    version='0.5.0',
+    version='0.6.0',
     license='Apache',
     url='https://github.com/obsrvbl/flowlogs-reader',
 
@@ -53,5 +53,5 @@ setup(
     test_suite='tests',
 
     install_requires=['botocore>=1.2.0', 'boto3>=1.1.3'],
-    tests_require=['mock'] if PY3 else [],
+    tests_require=['mock'] if PY2 else [],
 )

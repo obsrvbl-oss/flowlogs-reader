@@ -19,6 +19,11 @@ from datetime import datetime
 from unittest import TestCase
 
 try:
+    from itertools import zip_longest
+except ImportError:
+    from itertools import izip_longest as zip_longest
+
+try:
     from unittest.mock import patch
 except ImportError:
     from mock import patch
@@ -106,7 +111,25 @@ class MainTestCase(TestCase):
         mock_out.stdout = io.BytesIO()
         mock_reader.return_value = SAMPLE_RECORDS
         main(['mygroup'])
-        for call, record in zip(mock_out.mock_calls, SAMPLE_INPUT):
+        for call, record in zip_longest(mock_out.mock_calls, SAMPLE_INPUT):
+            __, args, kwargs = call
+            line = args[0]
+            self.assertEqual(line, record)
+
+    @patch('flowlogs_reader.__main__.FlowLogsReader', autospec=True)
+    @patch('flowlogs_reader.__main__.print', create=True)
+    def test_main_print_count(self, mock_out, mock_reader):
+        mock_out.stdout = io.BytesIO()
+        mock_reader.return_value = SAMPLE_RECORDS
+
+        with self.assertRaises(ValueError):
+            main(['mygroup', 'print', 'two'])
+
+        with self.assertRaises(RuntimeError):
+            main(['mygroup', 'print', '2', '3'])
+
+        main(['mygroup', 'print', '2'])
+        for call, record in zip_longest(mock_out.mock_calls, SAMPLE_INPUT[:2]):
             __, args, kwargs = call
             line = args[0]
             self.assertEqual(line, record)
@@ -143,7 +166,7 @@ class MainTestCase(TestCase):
         main(['mygroup', 'findip', '198.51.100.2'])
 
         expected_result = [SAMPLE_INPUT[2]]
-        for call, record in zip(mock_out.mock_calls, expected_result):
+        for call, record in zip_longest(mock_out.mock_calls, expected_result):
             __, args, kwargs = call
             line = args[0]
             self.assertEqual(line, record)
@@ -159,7 +182,7 @@ class MainTestCase(TestCase):
             'unknown action: __',
             'known actions: {}'.format(', '.join(actions)),
         ]
-        for call, result in zip(mock_out.mock_calls, expected_result):
+        for call, result in zip_longest(mock_out.mock_calls, expected_result):
             __, args, kwargs = call
             line = args[0]
             self.assertEqual(line, result)

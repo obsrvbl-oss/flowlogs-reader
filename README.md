@@ -38,6 +38,7 @@ python setup.py develop
 `flowlogs-reader` provides a command line interface called `flowlogs_reader` that allows you to print VPC Flow Log records to your screen. It assumes your AWS credentials are available through environment variables, a boto configuration file, or through IAM metadata. Some example uses are:
 
 * `flowlogs_reader flowlog_group` - print all flows in the past hour
+* `flowlogs_reader flowlog_group print 10` - print the first 10 flows from the past hour
 * `flowlogs_reader -s '2015-08-13 00:00:00' -e '2015-08-14 00:00:00' flowlog_group` - print all the flows from August 13, 2015
 * `flowlogs_reader flowlog_group ipset` - print the unique IPs seen in the past hour
 * `flowlogs_reader flowlog_group findip 198.51.100.2` - print all flows involving 198.51.100.2
