@@ -141,31 +141,14 @@ class FlowLogsReader(object):
         start_time=None,
         end_time=None,
         filter_pattern=DEFAULT_FILTER_PATTERN,
-        boto_client_kwargs=None
+        boto_client_kwargs=None,
+        boto_client=None,
     ):
-        boto_client_kwargs = boto_client_kwargs or {}
-        boto_client_kwargs = boto_client_kwargs.copy()
-        session_kwargs = {}
-
-        # If a region_name is specified, use that for the session
-        # If not, check boto_client_kwargs for one
-        # If neither of those, use their environment (i.e. don't pass it)
-        if region_name is not None:
-            session_kwargs['region_name'] = region_name
-        elif 'region_name' in boto_client_kwargs:
-            region_name = boto_client_kwargs.pop('region_name')
-            session_kwargs['region_name'] = region_name
-
-        if profile_name is not None:
-            session_kwargs['profile_name'] = profile_name
-
-        session = boto3.session.Session(**session_kwargs)
-        try:
-            self.logs_client = session.client('logs', **boto_client_kwargs)
-        except NoRegionError:
-            # If all else fails, just connect to the default region
-            self.logs_client = session.client(
-                'logs', region_name=DEFAULT_REGION_NAME, **boto_client_kwargs
+        if boto_client is not None:
+            self.logs_client = boto_client
+        else:
+            self.logs_client = self._get_client(
+                region_name, profile_name, boto_client_kwargs
             )
         self.log_group_name = log_group_name
 
@@ -193,6 +176,29 @@ class FlowLogsReader(object):
     def next(self):
         # For Python 2 compatibility
         return self.__next__()
+
+    def _get_client(self, region_name, profile_name, boto_client_kwargs):
+        if boto_client_kwargs is not None:
+            client_kwargs = boto_client_kwargs.copy()
+        else:
+            client_kwargs = {}
+
+        session_kwargs = {}
+        if region_name is not None:
+            session_kwargs['region_name'] = region_name
+
+        if profile_name is not None:
+            session_kwargs['profile_name'] = profile_name
+
+        session = boto3.session.Session(**session_kwargs)
+        try:
+            logs_client = session.client('logs', **client_kwargs)
+        except NoRegionError:
+            logs_client = session.client(
+                'logs', region_name=DEFAULT_REGION_NAME, **client_kwargs
+            )
+
+        return logs_client
 
     def _read_streams(self):
         paginator = self.logs_client.get_paginator('filter_log_events')
