@@ -152,12 +152,8 @@ class FlowRecordTestCase(TestCase):
 
 
 class FlowLogsReaderTestCase(TestCase):
-    @patch('flowlogs_reader.flowlogs_reader.boto3', autospec=True)
-    def setUp(self, mock_boto3):
-        self.mock_session = MagicMock()
-        mock_boto3.session.Session.return_value = self.mock_session
+    def setUp(self):
         self.mock_client = MagicMock()
-        self.mock_session.client.return_value = self.mock_client
 
         self.start_time = datetime(2015, 8, 12, 12, 0, 0)
         self.end_time = datetime(2015, 8, 12, 13, 0, 0)
@@ -166,7 +162,8 @@ class FlowLogsReaderTestCase(TestCase):
             'group_name',
             start_time=self.start_time,
             end_time=self.end_time,
-            filter_pattern='REJECT'
+            filter_pattern='REJECT',
+            boto_client=self.mock_client,
         )
 
     def test_init(self):
@@ -189,25 +186,24 @@ class FlowLogsReaderTestCase(TestCase):
 
     @patch('flowlogs_reader.flowlogs_reader.boto3.session', autospec=True)
     def test_region_name(self, mock_session):
-        # Region specified
+        # Region specified for session
         FlowLogsReader('some_group', region_name='some-region')
         mock_session.Session.assert_called_with(region_name='some-region')
 
-        # No region specified - assume configuration file worked
-        FlowLogsReader('some_group')
-        mock_session.Session.assert_called_with()
-
-        # Region specified in boto_client_kwargs
+        # Region specified for client, not for session
         FlowLogsReader(
             'some_group', boto_client_kwargs={'region_name': 'my-region'}
         )
-        mock_session.Session.assert_called_with(region_name='my-region')
+        mock_session.Session().client.assert_called_with(
+            'logs', region_name='my-region'
+        )
 
-        # No region specified and no configuration file
+        # No region specified for session or client - use the default
         def mock_response(*args, **kwargs):
             if 'region_name' not in kwargs:
                 raise NoRegionError
         mock_session.Session().client.side_effect = mock_response
+
         FlowLogsReader('some_group')
         mock_session.Session().client.assert_called_with(
             'logs', region_name=DEFAULT_REGION_NAME
