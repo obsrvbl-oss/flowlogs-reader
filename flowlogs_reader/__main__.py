@@ -17,6 +17,9 @@ from __future__ import print_function
 import sys
 from argparse import ArgumentParser
 from datetime import datetime
+from uuid import uuid4
+
+import boto3
 
 from .flowlogs_reader import FlowLogsReader, SKIPDATA, NODATA
 
@@ -64,11 +67,14 @@ actions['findip'] = action_findip
 
 
 def get_reader(args):
-    kwargs = {
-        'region_name': args.region or None,
-        'profile_name': args.profile or None
-    }
+    kwargs = {}
     time_format = args.time_format
+
+    if args.region:
+        kwargs['region_name'] = args.region
+
+    if args.profile:
+        kwargs['profile_name'] = args.profile
 
     if args.start_time:
         kwargs['start_time'] = datetime.strptime(args.start_time, time_format)
@@ -78,6 +84,25 @@ def get_reader(args):
 
     if args.filter_pattern:
         kwargs['filter_pattern'] = args.filter_pattern
+
+    # Switch roles for access to another account
+    if args.role_arn:
+        assume_role_kwargs = {}
+        assume_role_kwargs['RoleArn'] = args.role_arn
+        assume_role_kwargs['RoleSessionName'] = str(uuid4())[:32]
+        if args.external_id:
+            assume_role_kwargs['ExternalId'] = args.external_id
+
+        sts_client = boto3.client('sts')
+        resp = sts_client.assume_role(**assume_role_kwargs)
+        session_kwargs = {
+            'aws_access_key_id': resp['Credentials']['AccessKeyId'],
+            'aws_secret_access_key': resp['Credentials']['SecretAccessKey'],
+            'aws_session_token': resp['Credentials']['SessionToken'],
+        }
+        session = boto3.session.Session(**session_kwargs)
+        logs_client = session.client('logs')
+        kwargs['boto_client'] = logs_client
 
     return FlowLogsReader(log_group_name=args.logGroupName, **kwargs)
 
@@ -101,17 +126,28 @@ def main(argv=None):
                         help='format of time to parse')
     parser.add_argument('--filter-pattern', type=str,
                         help='return records that match this pattern')
+    parser.add_argument('--role-arn', type=str,
+                        help='assume role specified by this ARN')
+    parser.add_argument('--external-id', type=str,
+                        help='use this external ID for cross-account acesss')
     args = parser.parse_args(argv)
 
+    # Confirm the specified action is valid
     action = args.action[0]
     try:
         action_method = actions[action]
     except KeyError:
         print('unknown action: {}'.format(action), file=sys.stderr)
         print('known actions: {}'.format(', '.join(actions)), file=sys.stderr)
-    else:
-        reader = get_reader(args)
-        action_method(reader, *args.action[1:])
+        return
+
+    # Confirm the specified boto session arguments are valid
+    if args.external_id and not args.role_arn:
+        print('must give a --role-arn if an --external-id is given')
+        return
+
+    reader = get_reader(args)
+    action_method(reader, *args.action[1:])
 
 
 if __name__ == '__main__':
