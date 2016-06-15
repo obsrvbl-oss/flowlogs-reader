@@ -59,6 +59,8 @@ The default time window is the last hour. You may also specify a `--start-time` 
 * `flowlogs_reader --end-time='2015-08-14 00:00:00' flowlog_group`
 * `flowlogs_reader --start-time='2015-08-13 01:00:00' --end-time='2015-08-14 02:00:00' flowlog_group`
 
+Use the `--time-format` switch to control how start and end times are interpreted. The default is `'%Y-%m-%d %H:%M:%S'`. See the Python documentation for `strptime` for information on format strings.
+
 __AWS options__
 
 Other command line switches:
