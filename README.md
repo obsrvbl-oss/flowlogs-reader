@@ -55,7 +55,7 @@ __Time windows__
 
 The default time window is the last hour. You may also specify a `--start-time` and/or an `--end-time`. The `-s` and `-e` switches may be used also:
 
-* `flowlogs_reader --start-time='2015-08-13 00:00:00 flowlog_group'`
+* `flowlogs_reader --start-time='2015-08-13 00:00:00' flowlog_group`
 * `flowlogs_reader --end-time='2015-08-14 00:00:00' flowlog_group`
 * `flowlogs_reader --start-time='2015-08-13 01:00:00' --end-time='2015-08-14 02:00:00' flowlog_group`
 
