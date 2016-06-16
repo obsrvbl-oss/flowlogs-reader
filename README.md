@@ -35,18 +35,40 @@ python setup.py develop
 
 ## CLI Usage
 
-`flowlogs-reader` provides a command line interface called `flowlogs_reader` that allows you to print VPC Flow Log records to your screen. It assumes your AWS credentials are available through environment variables, a boto configuration file, or through IAM metadata. Some example uses are:
+`flowlogs-reader` provides a command line interface called `flowlogs_reader` that allows you to print VPC Flow Log records to your screen. It assumes your AWS credentials are available through environment variables, a boto configuration file, or through IAM metadata. Some example uses are below.
+
+__Printing flows__
+
+The default action is to `print` flows. You may also specify the `ipset` and `findip` actions:
 
 * `flowlogs_reader flowlog_group` - print all flows in the past hour
 * `flowlogs_reader flowlog_group print 10` - print the first 10 flows from the past hour
-* `flowlogs_reader -s '2015-08-13 00:00:00' -e '2015-08-14 00:00:00' flowlog_group` - print all the flows from August 13, 2015
 * `flowlogs_reader flowlog_group ipset` - print the unique IPs seen in the past hour
 * `flowlogs_reader flowlog_group findip 198.51.100.2` - print all flows involving 198.51.100.2
 
-Or combine with other command line utilities:
+You may combine the output of `flowlogs_reader` with other command line utilities:
 
 * `flowlogs_reader flowlog_group | grep REJECT` - print all `REJECT`ed Flow Log records
 * `flowlogs_reader flowlog_group | awk '$6 = 443'` - print all traffic from port 443
+
+__Time windows__
+
+The default time window is the last hour. You may also specify a `--start-time` and/or an `--end-time`. The `-s` and `-e` switches may be used also:
+
+* `flowlogs_reader --start-time='2015-08-13 00:00:00' flowlog_group`
+* `flowlogs_reader --end-time='2015-08-14 00:00:00' flowlog_group`
+* `flowlogs_reader --start-time='2015-08-13 01:00:00' --end-time='2015-08-14 02:00:00' flowlog_group`
+
+Use the `--time-format` switch to control how start and end times are interpreted. The default is `'%Y-%m-%d %H:%M:%S'`. See the Python documentation for `strptime` for information on format strings.
+
+__AWS options__
+
+Other command line switches:
+
+* `flowlogs_reader --region='us-west-2' flowlog_group` - connect to the given AWS region
+* `flowlogs_reader --profile='dev_profile' flowlog_group` - use the profile from your [local AWS configuration file](http://docs.aws.amazon.com/cli/latest/topic/config-vars.html) to specify credentials and regions
+* `flowlogs_reader --filter-pattern='REJECT' flowlog_group` - use the given [filter pattern](http://docs.aws.amazon.com/AmazonCloudWatch/latest/DeveloperGuide/FilterAndPatternSyntax.html) to have the server limit the output
+* `flowlogs_reader --role-arn='arn:aws:iam::12345678901:role/myrole' --external-id='0a1b2c3d' flowlog_group` - use the given role and external ID to connect to a 3rd party's account using [`sts assume-role`](http://docs.aws.amazon.com/cli/latest/reference/sts/assume-role.html)
 
 ## Module Usage
 

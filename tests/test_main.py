@@ -24,9 +24,9 @@ except ImportError:
     from itertools import izip_longest as zip_longest
 
 try:
-    from unittest.mock import patch
+    from unittest.mock import MagicMock, patch
 except ImportError:
-    from mock import patch
+    from mock import MagicMock, patch
 
 from flowlogs_reader import FlowRecord
 from flowlogs_reader.__main__ import main, actions
@@ -61,20 +61,16 @@ class MainTestCase(TestCase):
     @patch('flowlogs_reader.__main__.FlowLogsReader', autospec=True)
     def test_main(self, mock_reader):
         main(['mygroup'])
-        mock_reader.assert_called_with(
-            log_group_name='mygroup', region_name=None, profile_name=None
-        )
+        mock_reader.assert_called_with(log_group_name='mygroup')
 
         main(['-s', '2015-05-05 14:20:00', 'mygroup'])
         mock_reader.assert_called_with(
-            log_group_name='mygroup', region_name=None,
-            start_time=datetime(2015, 5, 5, 14, 20), profile_name=None
+            log_group_name='mygroup', start_time=datetime(2015, 5, 5, 14, 20),
         )
 
         main(['--end-time', '2015-05-05 14:20:00', 'mygroup'])
         mock_reader.assert_called_with(
-            log_group_name='mygroup', region_name=None,
-            end_time=datetime(2015, 5, 5, 14, 20), profile_name=None
+            log_group_name='mygroup', end_time=datetime(2015, 5, 5, 14, 20),
         )
 
         main([
@@ -83,26 +79,22 @@ class MainTestCase(TestCase):
             'mygroup'
         ])
         mock_reader.assert_called_with(
-            log_group_name='mygroup', region_name=None,
-            start_time=datetime(2015, 5, 5), profile_name=None
+            log_group_name='mygroup', start_time=datetime(2015, 5, 5),
         )
 
         main(['--region', 'us-west-1', 'mygroup'])
         mock_reader.assert_called_with(
             log_group_name='mygroup', region_name='us-west-1',
-            profile_name=None
         )
 
         main(['--profile', 'my-profile', 'mygroup'])
         mock_reader.assert_called_with(
-            log_group_name='mygroup', region_name=None,
-            profile_name='my-profile'
+            log_group_name='mygroup', profile_name='my-profile'
         )
 
         main(['--filter-pattern', 'REJECT', 'mygroup'])
         mock_reader.assert_called_with(
-            log_group_name='mygroup', region_name=None,
-            profile_name=None, filter_pattern='REJECT'
+            log_group_name='mygroup', filter_pattern='REJECT'
         )
 
     @patch('flowlogs_reader.__main__.FlowLogsReader', autospec=True)
@@ -186,3 +178,44 @@ class MainTestCase(TestCase):
             __, args, kwargs = call
             line = args[0]
             self.assertEqual(line, result)
+
+    @patch('flowlogs_reader.__main__.FlowLogsReader', autospec=True)
+    @patch('flowlogs_reader.__main__.print', create=True)
+    def test_main_missing_arn(self, mock_out, mock_reader):
+        mock_out.stdout = io.BytesIO()
+        mock_reader.return_value = SAMPLE_RECORDS
+        main(['--external-id', 'uuid4', 'mygroup'])
+
+        expected_result = [
+            'must give a --role-arn if an --external-id is given',
+        ]
+        for call, result in zip_longest(mock_out.mock_calls, expected_result):
+            __, args, kwargs = call
+            line = args[0]
+            self.assertEqual(line, result)
+
+    @patch('flowlogs_reader.__main__.FlowLogsReader', autospec=True)
+    @patch('flowlogs_reader.__main__.boto3', autospec=True)
+    def test_main_assume_role(self, mock_boto3, mock_reader):
+        mock_boto3.client.return_value.assume_role.return_value = {
+            'Credentials': {
+                'AccessKeyId': 'myaccesskeyid',
+                'SecretAccessKey': 'mysecretaccesskey',
+                'SessionToken': 'mysessiontoken',
+            }
+        }
+        mock_client = MagicMock()
+        mock_boto3.session.Session.return_value.client.return_value = (
+            mock_client
+        )
+        mock_reader.return_value = []
+        main(['--role-arn', 'myarn', '--external-id', 'uuid4', 'mygroup'])
+
+        mock_boto3.session.Session.assert_called_once_with(
+            aws_access_key_id='myaccesskeyid',
+            aws_secret_access_key='mysecretaccesskey',
+            aws_session_token='mysessiontoken',
+        )
+        mock_reader.assert_called_once_with(
+            log_group_name='mygroup', boto_client=mock_client
+        )
