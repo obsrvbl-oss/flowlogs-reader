@@ -75,25 +75,13 @@ class FlowRecordTestCase(TestCase):
         self.assertEqual(actual, expected)
 
     def test_eq(self):
-        flow_record = FlowRecord({'message': SAMPLE_RECORDS[1]})
-        actual = {x: getattr(flow_record, x) for x in FlowRecord.__slots__}
-        expected = {
-            'account_id': '123456789010',
-            'action': 'ACCEPT',
-            'bytes': 1680,
-            'dstaddr': '198.51.100.1',
-            'dstport': 443,
-            'end': datetime(2015, 8, 12, 13, 47, 45),
-            'interface_id': 'eni-102010ab',
-            'log_status': 'OK',
-            'packets': 20,
-            'protocol': 6,
-            'srcaddr': '192.0.2.1',
-            'srcport': 49152,
-            'start': datetime(2015, 8, 12, 13, 47, 44),
-            'version': 2,
-        }
-        self.assertEqual(actual, expected)
+        flow_record = FlowRecord({'message': SAMPLE_RECORDS[0]})
+        equal_record = FlowRecord({'message': SAMPLE_RECORDS[0]})
+        unequal_record = FlowRecord({'message': SAMPLE_RECORDS[1]})
+
+        self.assertEqual(flow_record, equal_record)
+        self.assertNotEqual(flow_record, unequal_record)
+        self.assertNotEqual(flow_record, Ellipsis)
 
     def test_hash(self):
         record_set = {
