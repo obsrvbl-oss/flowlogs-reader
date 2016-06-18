@@ -251,6 +251,7 @@ class AggregationTestCase(TestCase):
             SAMPLE_RECORDS[0],
             SAMPLE_RECORDS[1],
             SAMPLE_RECORDS[2].replace('REJECT', 'ACCEPT'),
+            SAMPLE_RECORDS[3],
         ]
         all_records = (FlowRecord.from_message(x) for x in messages)
         results = aggregated_records(all_records)

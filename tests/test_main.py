@@ -24,6 +24,11 @@ except ImportError:
     from itertools import izip_longest as zip_longest
 
 try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+
+try:
     from unittest.mock import MagicMock, patch
 except ImportError:
     from mock import MagicMock, patch
@@ -219,3 +224,38 @@ class MainTestCase(TestCase):
         mock_reader.assert_called_once_with(
             log_group_name='mygroup', boto_client=mock_client
         )
+
+    @patch('flowlogs_reader.__main__.FlowLogsReader', autospec=True)
+    def test_main_aggregate(self, mock_reader):
+        mock_reader.return_value = [SAMPLE_RECORDS[0], SAMPLE_RECORDS[0]]
+        with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+            main(['mygroup', 'aggregate'])
+            output = mock_stdout.getvalue().splitlines()
+
+        actual_header = output[0].split('\t')
+        expected_header = [
+            'bytes',
+            'dstaddr',
+            'dstport',
+            'end',
+            'packets',
+            'protocol',
+            'srcaddr',
+            'srcport',
+            'start',
+        ]
+        self.assertEqual(actual_header, expected_header)
+
+        actual_line = output[1].split('\t')
+        expected_line = [
+            '1680',
+            '192.0.2.1',
+            '49152',
+            '2015-08-12 13:47:44',
+            '20',
+            '6',
+            '198.51.100.1',
+            '443',
+            '2015-08-12 13:47:43',
+        ]
+        self.assertEqual(actual_line, expected_line)

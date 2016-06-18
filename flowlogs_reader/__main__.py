@@ -17,10 +17,12 @@ from __future__ import print_function
 import sys
 from argparse import ArgumentParser
 from datetime import datetime
+from itertools import chain
 from uuid import uuid4
 
 import boto3
 
+from .aggregation import aggregated_records
 from .flowlogs_reader import FlowLogsReader, SKIPDATA, NODATA
 
 actions = {}
@@ -64,6 +66,20 @@ def action_findip(reader, *args):
         if (record.srcaddr in target_ips) or (record.dstaddr in target_ips):
             print(record.to_message())
 actions['findip'] = action_findip
+
+
+def action_aggregate(reader, *args):
+    """Aggregate flow records by 5-tuple and print a tab-separated stream"""
+    all_aggregated = aggregated_records(reader)
+    first_row = next(all_aggregated)
+    keys = sorted(first_row.keys())
+    print(*keys, sep='\t')
+
+    # Join the first row with the rest of the rows and print them
+    iterable = chain([first_row], all_aggregated)
+    for item in iterable:
+        print(*[item[k] for k in keys], sep='\t')
+actions['aggregate'] = action_aggregate
 
 
 def get_reader(args):

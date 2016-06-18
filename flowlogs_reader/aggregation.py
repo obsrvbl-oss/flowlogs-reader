@@ -38,10 +38,8 @@ class _FlowStats(object):
             self.start = flow_record.start
         if flow_record.end > self.end:
             self.end = flow_record.end
-        if flow_record.packets:
-            self.packets += flow_record.packets
-        if flow_record.bytes:
-            self.bytes += flow_record.bytes
+        self.packets += flow_record.packets
+        self.bytes += flow_record.bytes
 
     def to_dict(self):
         return {x: getattr(self, x) for x in self.__slots__}
@@ -50,7 +48,7 @@ class _FlowStats(object):
 def aggregated_records(all_records, key_fields=KEY_FIELDS):
     """
     Yield dicts that correspond to aggregates of the flow records given by
-    the sequence of FlowRecords in `all_records`.
+    the sequence of FlowRecords in `all_records`. Skips incomplete records.
     This will consume the `all_records` iterator, and requires enough memory to
     be able to read it entirely.
     `key_fields` optionally contains the fields over which to aggregate. By
@@ -59,6 +57,8 @@ def aggregated_records(all_records, key_fields=KEY_FIELDS):
     flow_table = defaultdict(_FlowStats)
     for flow_record in all_records:
         key = tuple(getattr(flow_record, attr) for attr in key_fields)
+        if any(x is None for x in key):
+            continue
         flow_table[key].update(flow_record)
 
     for key in flow_table:

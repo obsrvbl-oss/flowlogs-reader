@@ -39,12 +39,13 @@ python setup.py develop
 
 __Printing flows__
 
-The default action is to `print` flows. You may also specify the `ipset` and `findip` actions:
+The default action is to `print` flows. You may also specify the `ipset`, `findip`, and `aggregate` actions:
 
 * `flowlogs_reader flowlog_group` - print all flows in the past hour
 * `flowlogs_reader flowlog_group print 10` - print the first 10 flows from the past hour
 * `flowlogs_reader flowlog_group ipset` - print the unique IPs seen in the past hour
 * `flowlogs_reader flowlog_group findip 198.51.100.2` - print all flows involving 198.51.100.2
+* `flowlogs_reader flowlog_group findip aggregate` - aggregate the flows by 5-tuple, then print them as a tab-separated stream (with a header)
 
 You may combine the output of `flowlogs_reader` with other command line utilities:
 
@@ -161,9 +162,6 @@ for profile_name in profile_names:
 Apply a filter for UDP traffic that was logged normally.
 
 ```python
-from flowlogs_reader import FlowLogsReader
-
-
 FILTER_PATTERN = (
     '[version="2", account_id, interface_id, srcaddr, dstaddr, '
     'srcport, dstport, protocol="17", packets, bytes, '
@@ -173,4 +171,16 @@ FILTER_PATTERN = (
 flow_log_reader = FlowLogsReader('flowlog_group', filter_pattern=FILTER_PATTERN)
 records = list(flow_log_reader)
 print(len(records))
+```
+
+You may aggregate records with the `aggregate_records` function.
+Pass in a `FlowLogsReader` object and optionally a `key_fields` tuple.
+Python `dict` objects will be yielded representing the aggregated flow records.
+By default the typical `('srcaddr', 'dstaddr', 'srcport', 'dstport', 'protocol')` will be used.
+The `start`, `end`, `packets`, and `bytes` items will be aggregated.
+
+```python
+flow_log_reader = FlowLogsReader('flowlog_group')
+key_fields = ('srcaddr', 'dstaddr')
+records = list(aggregated_records(flow_log_reader, key_fields=key_fields))
 ```
