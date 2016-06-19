@@ -4,7 +4,8 @@
 [![Coverage Status](https://coveralls.io/repos/obsrvbl/flowlogs-reader/badge.svg?branch=master&service=github)](https://coveralls.io/github/obsrvbl/flowlogs-reader?branch=master)
 [![PyPI Version](https://img.shields.io/pypi/v/flowlogs_reader.svg)](https://pypi.python.org/pypi/flowlogs_reader)
 
-Amazon's VPC Flow Logs are analagous to NetFlow and IPFIX logs, and can be used for security and performance analysis. [Observable Networks](https://observable.net) uses VPC Flow logs as an input to endpoint modeling for security monitoring.
+Amazon's VPC Flow Logs are analagous to NetFlow and IPFIX logs, and can be used for security and performance analysis.
+[Observable Networks](https://observable.net) uses VPC Flow logs as an input to endpoint modeling for security monitoring.
 
 This project contains a Python library that makes retrieving VPC Flow Logs from Amazon CloudWatch Logs a bit easier. The library provides:
 
@@ -14,8 +15,8 @@ This project contains a Python library that makes retrieving VPC Flow Logs from 
 The library builds on [boto3](https://github.com/boto/boto3) and should work on both Python 2.7 and 3.4+.
 
 For information on VPC Flow Logs and how to enable them see [this post](https://aws.amazon.com/blogs/aws/vpc-flow-logs-log-and-view-network-traffic-flows/) at the AWS blog.
+You may use this library with the [kinesis-logs-reader](https://github.com/obsrvbl/kinesis-logs-reader) library when retrieving VPC flow logs from Amazon Kinesis.
 
-__Note__: The library is still experimental. Give it a try and file an issue or pull request if you have suggestions.
 
 ## Installation
 
@@ -35,7 +36,9 @@ python setup.py develop
 
 ## CLI Usage
 
-`flowlogs-reader` provides a command line interface called `flowlogs_reader` that allows you to print VPC Flow Log records to your screen. It assumes your AWS credentials are available through environment variables, a boto configuration file, or through IAM metadata. Some example uses are below.
+`flowlogs-reader` provides a command line interface called `flowlogs_reader` that allows you to print VPC Flow Log records to your screen.
+It assumes your AWS credentials are available through environment variables, a boto configuration file, or through IAM metadata.
+Some example uses are below.
 
 __Printing flows__
 
@@ -128,6 +131,12 @@ You can control what's retrieved with these parameters:
 * `boto_client` is a boto3 client object. This takes overrides `region_name`, `profile_name`, and `boto_client_kwargs`.
 
 ## Examples
+
+Start by importing `FlowLogsReader`:
+
+```python
+from flowlogs_reader import FlowLogsReader
+```
 
 Find all of the IP addresses communicating inside the VPC:
 
