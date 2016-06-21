@@ -17,7 +17,6 @@ from __future__ import division, print_function
 from datetime import datetime
 from unittest import TestCase
 
-
 from botocore.exceptions import NoRegionError
 
 try:
@@ -25,7 +24,7 @@ try:
 except ImportError:
     from mock import MagicMock, patch
 
-from flowlogs_reader import FlowRecord, FlowLogsReader
+from flowlogs_reader import aggregated_records, FlowRecord, FlowLogsReader
 from flowlogs_reader.flowlogs_reader import DEFAULT_REGION_NAME
 
 
@@ -39,8 +38,8 @@ SAMPLE_RECORDS = [
         '49152 443 6 20 1680 1439387264 1439387265 ACCEPT OK'
     ),
     (
-        '2 123456789010 eni-102010ab 192.0.2.1 198.51.100.1 '
-        '49152 443 6 20 1680 1439387265 1439387266 REJECT OK'
+        '2 123456789010 eni-102010cd 192.0.2.1 198.51.100.1 '
+        '49152 443 6 20 1680 1439387263 1439387266 REJECT OK'
     ),
     (
         '2 123456789010 eni-1a2b3c4d - - - - - - - '
@@ -76,25 +75,13 @@ class FlowRecordTestCase(TestCase):
         self.assertEqual(actual, expected)
 
     def test_eq(self):
-        flow_record = FlowRecord({'message': SAMPLE_RECORDS[1]})
-        actual = {x: getattr(flow_record, x) for x in FlowRecord.__slots__}
-        expected = {
-            'account_id': '123456789010',
-            'action': 'ACCEPT',
-            'bytes': 1680,
-            'dstaddr': '198.51.100.1',
-            'dstport': 443,
-            'end': datetime(2015, 8, 12, 13, 47, 45),
-            'interface_id': 'eni-102010ab',
-            'log_status': 'OK',
-            'packets': 20,
-            'protocol': 6,
-            'srcaddr': '192.0.2.1',
-            'srcport': 49152,
-            'start': datetime(2015, 8, 12, 13, 47, 44),
-            'version': 2,
-        }
-        self.assertEqual(actual, expected)
+        flow_record = FlowRecord({'message': SAMPLE_RECORDS[0]})
+        equal_record = FlowRecord({'message': SAMPLE_RECORDS[0]})
+        unequal_record = FlowRecord({'message': SAMPLE_RECORDS[1]})
+
+        self.assertEqual(flow_record, equal_record)
+        self.assertNotEqual(flow_record, unequal_record)
+        self.assertNotEqual(flow_record, Ellipsis)
 
     def test_hash(self):
         record_set = {
@@ -129,13 +116,13 @@ class FlowRecordTestCase(TestCase):
             'dstaddr': '198.51.100.1',
             'dstport': 443,
             'end': datetime(2015, 8, 12, 13, 47, 46),
-            'interface_id': 'eni-102010ab',
+            'interface_id': 'eni-102010cd',
             'log_status': 'OK',
             'packets': 20,
             'protocol': 6,
             'srcaddr': '192.0.2.1',
             'srcport': 49152,
-            'start': datetime(2015, 8, 12, 13, 47, 45),
+            'start': datetime(2015, 8, 12, 13, 47, 43),
             'version': 2,
         }
         self.assertEqual(actual, expected)
@@ -254,4 +241,79 @@ class FlowLogsReaderTestCase(TestCase):
         # Calling list on the instance causes it to iterate through all records
         actual = [next(self.inst)] + list(self.inst)
         expected = [FlowRecord.from_message(x) for x in SAMPLE_RECORDS]
+        self.assertEqual(actual, expected)
+
+
+class AggregationTestCase(TestCase):
+    def test_aggregated_records(self):
+        # Aggregate by 5-tuple by default
+        messages = [
+            SAMPLE_RECORDS[0],
+            SAMPLE_RECORDS[1],
+            SAMPLE_RECORDS[2].replace('REJECT', 'ACCEPT'),
+            SAMPLE_RECORDS[3],
+        ]
+        all_records = (FlowRecord.from_message(x) for x in messages)
+        results = aggregated_records(all_records)
+
+        actual = sorted(results, key=lambda x: x['srcaddr'])
+        expected = [
+            {
+                'srcaddr': '192.0.2.1',
+                'srcport': 49152,
+                'dstaddr': '198.51.100.1',
+                'dstport': 443,
+                'protocol': 6,
+                'start': datetime(2015, 8, 12, 13, 47, 43),
+                'end': datetime(2015, 8, 12, 13, 47, 46),
+                'packets': 40,
+                'bytes': 3360,
+            },
+            {
+                'srcaddr': '198.51.100.1',
+                'srcport': 443,
+                'dstaddr': '192.0.2.1',
+                'dstport': 49152,
+                'protocol': 6,
+                'start': datetime(2015, 8, 12, 13, 47, 43),
+                'end': datetime(2015, 8, 12, 13, 47, 44),
+                'packets': 10,
+                'bytes': 840,
+            },
+        ]
+        self.assertEqual(actual, expected)
+
+    def test_aggregated_records_custom(self):
+        # Aggregate by interface_id
+        messages = [
+            SAMPLE_RECORDS[1],
+            SAMPLE_RECORDS[2].replace('REJECT', 'ACCEPT'),
+        ]
+        all_records = (FlowRecord.from_message(x) for x in messages)
+        key_fields = ('interface_id', 'srcaddr', 'srcport', 'dstport')
+        results = aggregated_records(all_records, key_fields=key_fields)
+
+        actual = sorted(results, key=lambda x: x['interface_id'])
+        expected = [
+            {
+                'srcaddr': '192.0.2.1',
+                'srcport': 49152,
+                'interface_id': 'eni-102010ab',
+                'dstport': 443,
+                'start': datetime(2015, 8, 12, 13, 47, 44),
+                'end': datetime(2015, 8, 12, 13, 47, 45),
+                'packets': 20,
+                'bytes': 1680,
+            },
+            {
+                'srcaddr': '192.0.2.1',
+                'srcport': 49152,
+                'interface_id': 'eni-102010cd',
+                'dstport': 443,
+                'start': datetime(2015, 8, 12, 13, 47, 43),
+                'end': datetime(2015, 8, 12, 13, 47, 46),
+                'packets': 20,
+                'bytes': 1680,
+            },
+        ]
         self.assertEqual(actual, expected)

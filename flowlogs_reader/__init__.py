@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .aggregation import aggregated_records  # noqa
 from .flowlogs_reader import FlowRecord, FlowLogsReader  # noqa
 
-__all__ = ['FlowRecord', 'FlowLogsReader']
+__all__ = ['aggregated_records', 'FlowRecord', 'FlowLogsReader']
