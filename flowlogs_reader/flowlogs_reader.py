@@ -18,8 +18,7 @@ from calendar import timegm
 from datetime import datetime, timedelta
 
 import boto3
-from botocore.exceptions import NoRegionError
-
+from botocore.exceptions import NoRegionError, PaginationError
 
 DEFAULT_FILTER_PATTERN = (
     '[version="2", account_id, interface_id, srcaddr, dstaddr, '
@@ -212,9 +211,12 @@ class FlowLogsReader(object):
             **self.paginator_kwargs
         )
 
-        for page in response_iterator:
-            for event in page['events']:
-                yield event
+        try:
+            for page in response_iterator:
+                for event in page['events']:
+                    yield event
+        except PaginationError:
+            pass
 
     def _reader(self):
         # Loops through each log stream and its events, yielding a parsed

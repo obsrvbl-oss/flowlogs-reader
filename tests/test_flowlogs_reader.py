@@ -17,7 +17,7 @@ from __future__ import division, print_function
 from datetime import datetime
 from unittest import TestCase
 
-from botocore.exceptions import NoRegionError
+from botocore.exceptions import NoRegionError, PaginationError
 
 try:
     from unittest.mock import MagicMock, patch
@@ -241,6 +241,25 @@ class FlowLogsReaderTestCase(TestCase):
         # Calling list on the instance causes it to iterate through all records
         actual = [next(self.inst)] + list(self.inst)
         expected = [FlowRecord.from_message(x) for x in SAMPLE_RECORDS]
+        self.assertEqual(actual, expected)
+
+    def test_iteration_error(self):
+        # Simulate the paginator failing
+        def _get_paginator(*args, **kwargs):
+            event_0 = {'logStreamName': 'log_0', 'message': SAMPLE_RECORDS[0]}
+            event_1 = {'logStreamName': 'log_0', 'message': SAMPLE_RECORDS[1]}
+            for item in [{'events': [event_0, event_1]}]:
+                yield item
+
+            raise PaginationError(message='Pagination error')
+
+        self.mock_client.get_paginator.return_value.paginate.side_effect = (
+            _get_paginator
+        )
+
+        # Don't fail if botocore's paginator raises a PaginationError
+        actual = [next(self.inst)] + list(self.inst)
+        expected = [FlowRecord.from_message(x) for x in SAMPLE_RECORDS[:2]]
         self.assertEqual(actual, expected)
 
 
