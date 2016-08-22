@@ -18,8 +18,7 @@ from calendar import timegm
 from datetime import datetime, timedelta
 
 import boto3
-from botocore.exceptions import NoRegionError
-
+from botocore.exceptions import NoRegionError, PaginationError
 
 DEFAULT_FILTER_PATTERN = (
     '[version="2", account_id, interface_id, srcaddr, dstaddr, '
@@ -27,6 +26,7 @@ DEFAULT_FILTER_PATTERN = (
     'start, end, action, log_status]'
 )
 DEFAULT_REGION_NAME = 'us-east-1'
+DUPLICATE_NEXT_TOKEN_MESSAGE = 'The same next token was received twice'
 
 ACCEPT = 'ACCEPT'
 REJECT = 'REJECT'
@@ -212,9 +212,15 @@ class FlowLogsReader(object):
             **self.paginator_kwargs
         )
 
-        for page in response_iterator:
-            for event in page['events']:
-                yield event
+        try:
+            for page in response_iterator:
+                for event in page['events']:
+                    yield event
+        except PaginationError as e:
+            if e.kwargs['message'].startswith(DUPLICATE_NEXT_TOKEN_MESSAGE):
+                pass
+            else:
+                raise
 
     def _reader(self):
         # Loops through each log stream and its events, yielding a parsed

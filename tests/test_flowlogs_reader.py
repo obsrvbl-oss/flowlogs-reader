@@ -17,7 +17,7 @@ from __future__ import division, print_function
 from datetime import datetime
 from unittest import TestCase
 
-from botocore.exceptions import NoRegionError
+from botocore.exceptions import NoRegionError, PaginationError
 
 try:
     from unittest.mock import MagicMock, patch
@@ -25,7 +25,10 @@ except ImportError:
     from mock import MagicMock, patch
 
 from flowlogs_reader import aggregated_records, FlowRecord, FlowLogsReader
-from flowlogs_reader.flowlogs_reader import DEFAULT_REGION_NAME
+from flowlogs_reader.flowlogs_reader import (
+    DEFAULT_REGION_NAME,
+    DUPLICATE_NEXT_TOKEN_MESSAGE,
+)
 
 
 SAMPLE_RECORDS = [
@@ -242,6 +245,40 @@ class FlowLogsReaderTestCase(TestCase):
         actual = [next(self.inst)] + list(self.inst)
         expected = [FlowRecord.from_message(x) for x in SAMPLE_RECORDS]
         self.assertEqual(actual, expected)
+
+    def test_iteration_error(self):
+        # Simulate the paginator failing
+        def _get_paginator(*args, **kwargs):
+            event_0 = {'logStreamName': 'log_0', 'message': SAMPLE_RECORDS[0]}
+            event_1 = {'logStreamName': 'log_0', 'message': SAMPLE_RECORDS[1]}
+            for item in [{'events': [event_0, event_1]}]:
+                yield item
+
+            err_msg = '{}: {}'.format(DUPLICATE_NEXT_TOKEN_MESSAGE, 'token')
+            raise PaginationError(message=err_msg)
+
+        self.mock_client.get_paginator.return_value.paginate.side_effect = (
+            _get_paginator
+        )
+
+        # Don't fail if botocore's paginator raises a PaginationError
+        actual = [next(self.inst)] + list(self.inst)
+        expected = [FlowRecord.from_message(x) for x in SAMPLE_RECORDS[:2]]
+        self.assertEqual(actual, expected)
+
+    def test_iteration_unexpecetd_error(self):
+        # Simulate the paginator failing
+        def _get_paginator(*args, **kwargs):
+            event_0 = {'logStreamName': 'log_0', 'message': SAMPLE_RECORDS[0]}
+            yield {'events': [event_0]}
+            raise PaginationError(message='other error')
+
+        self.mock_client.get_paginator.return_value.paginate.side_effect = (
+            _get_paginator
+        )
+
+        # Fail for unexpected PaginationError
+        self.assertRaises(PaginationError, lambda: list(self.inst))
 
 
 class AggregationTestCase(TestCase):
