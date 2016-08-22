@@ -254,6 +254,7 @@ class FlowLogsReaderTestCase(TestCase):
             for item in [{'events': [event_0, event_1]}]:
                 yield item
 
+            err_msg = '{}: {}'.format(DUPLICATE_NEXT_TOKEN_MESSAGE, 'token')
             raise PaginationError(message=err_msg)
 
         self.mock_client.get_paginator.return_value.paginate.side_effect = (
@@ -261,13 +262,22 @@ class FlowLogsReaderTestCase(TestCase):
         )
 
         # Don't fail if botocore's paginator raises a PaginationError
-        err_msg = '{}: {}'.format(DUPLICATE_NEXT_TOKEN_MESSAGE, 'token')
-        actual = [next(self.inst), next(self.inst)]
+        actual = [next(self.inst)] + list(self.inst)
         expected = [FlowRecord.from_message(x) for x in SAMPLE_RECORDS[:2]]
         self.assertEqual(actual, expected)
 
-        # Don't fail if botocore's paginator raises a PaginationError
-        err_msg = 'other error'
+    def test_iteration_unexpecetd_error(self):
+        # Simulate the paginator failing
+        def _get_paginator(*args, **kwargs):
+            event_0 = {'logStreamName': 'log_0', 'message': SAMPLE_RECORDS[0]}
+            yield {'events': [event_0]}
+            raise PaginationError(message='other error')
+
+        self.mock_client.get_paginator.return_value.paginate.side_effect = (
+            _get_paginator
+        )
+
+        # Fail for unexpected PaginationError
         self.assertRaises(PaginationError, lambda: list(self.inst))
 
 
