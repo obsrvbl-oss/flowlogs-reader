@@ -26,6 +26,7 @@ DEFAULT_FILTER_PATTERN = (
     'start, end, action, log_status]'
 )
 DEFAULT_REGION_NAME = 'us-east-1'
+DUPLICATE_NEXT_TOKEN_MESSAGE = 'The same next token was received twice'
 
 ACCEPT = 'ACCEPT'
 REJECT = 'REJECT'
@@ -215,8 +216,11 @@ class FlowLogsReader(object):
             for page in response_iterator:
                 for event in page['events']:
                     yield event
-        except PaginationError:
-            pass
+        except PaginationError as e:
+            if e.kwargs['message'].startswith(DUPLICATE_NEXT_TOKEN_MESSAGE):
+                pass
+            else:
+                raise
 
     def _reader(self):
         # Loops through each log stream and its events, yielding a parsed

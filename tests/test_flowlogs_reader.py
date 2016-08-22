@@ -25,7 +25,10 @@ except ImportError:
     from mock import MagicMock, patch
 
 from flowlogs_reader import aggregated_records, FlowRecord, FlowLogsReader
-from flowlogs_reader.flowlogs_reader import DEFAULT_REGION_NAME
+from flowlogs_reader.flowlogs_reader import (
+    DEFAULT_REGION_NAME,
+    DUPLICATE_NEXT_TOKEN_MESSAGE,
+)
 
 
 SAMPLE_RECORDS = [
@@ -251,16 +254,21 @@ class FlowLogsReaderTestCase(TestCase):
             for item in [{'events': [event_0, event_1]}]:
                 yield item
 
-            raise PaginationError(message='Pagination error')
+            raise PaginationError(message=err_msg)
 
         self.mock_client.get_paginator.return_value.paginate.side_effect = (
             _get_paginator
         )
 
         # Don't fail if botocore's paginator raises a PaginationError
-        actual = [next(self.inst)] + list(self.inst)
+        err_msg = '{}: {}'.format(DUPLICATE_NEXT_TOKEN_MESSAGE, 'token')
+        actual = [next(self.inst), next(self.inst)]
         expected = [FlowRecord.from_message(x) for x in SAMPLE_RECORDS[:2]]
         self.assertEqual(actual, expected)
+
+        # Don't fail if botocore's paginator raises a PaginationError
+        err_msg = 'other error'
+        self.assertRaises(PaginationError, lambda: list(self.inst))
 
 
 class AggregationTestCase(TestCase):
