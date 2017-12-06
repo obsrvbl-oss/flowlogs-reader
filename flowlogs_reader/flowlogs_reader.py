@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+from __future__ import division, print_function
 
 from calendar import timegm
 from datetime import datetime, timedelta
@@ -57,13 +57,25 @@ class FlowRecord(object):
         'log_status',
     ]
 
-    def __init__(self, event):
+    def __init__(self, event, EPOCH_32_MAX=2147483647):
         fields = event['message'].split()
         self.version = int(fields[0])
         self.account_id = fields[1]
         self.interface_id = fields[2]
-        self.start = datetime.utcfromtimestamp(int(fields[10]))
-        self.end = datetime.utcfromtimestamp(int(fields[11]))
+
+        # Contra the docs, the start and end fields can contain
+        # millisecond-based timestamps.
+        # http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html
+        start = int(fields[10])
+        if start > EPOCH_32_MAX:
+            start /= 1000
+
+        end = int(fields[11])
+        if end > EPOCH_32_MAX:
+            end /= 1000
+
+        self.start = datetime.utcfromtimestamp(start)
+        self.end = datetime.utcfromtimestamp(end)
 
         self.log_status = fields[13]
         if self.log_status in (NODATA, SKIPDATA):
