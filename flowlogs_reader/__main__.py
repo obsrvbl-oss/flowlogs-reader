@@ -42,6 +42,8 @@ def action_print(reader, *args):
         print(record.to_message())
         if i == stop_after:
             break
+
+
 actions['print'] = action_print
 
 
@@ -56,6 +58,8 @@ def action_ipset(reader, *args):
 
     for ip in ip_set:
         print(ip)
+
+
 actions['ipset'] = action_ipset
 
 
@@ -65,6 +69,8 @@ def action_findip(reader, *args):
     for record in reader:
         if (record.srcaddr in target_ips) or (record.dstaddr in target_ips):
             print(record.to_message())
+
+
 actions['findip'] = action_findip
 
 
@@ -79,6 +85,8 @@ def action_aggregate(reader, *args):
     iterable = chain([first_row], all_aggregated)
     for item in iterable:
         print(*[item[k] for k in keys], sep='\t')
+
+
 actions['aggregate'] = action_aggregate
 
 
