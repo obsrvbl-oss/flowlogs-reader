@@ -130,6 +130,16 @@ class FlowRecordTestCase(TestCase):
         }
         self.assertEqual(actual, expected)
 
+    def test_millisecond_timestamp(self):
+        # This record has millisecond timestamps
+        record = (
+            '2 123456789010 eni-4b118871 - - - - - - - '
+            '1512564058000 1512564059000 - SKIPDATA'
+        )
+        flow_record = FlowRecord({'message': record})
+        self.assertEqual(flow_record.start, datetime(2017, 12, 6, 12, 40, 58))
+        self.assertEqual(flow_record.end, datetime(2017, 12, 6, 12, 40, 59))
+
     def test_to_message(self):
         for message in SAMPLE_RECORDS:
             message_record = FlowRecord.from_message(message)
