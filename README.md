@@ -48,7 +48,7 @@ The default action is to `print` flows. You may also specify the `ipset`, `findi
 * `flowlogs_reader flowlog_group print 10` - print the first 10 flows from the past hour
 * `flowlogs_reader flowlog_group ipset` - print the unique IPs seen in the past hour
 * `flowlogs_reader flowlog_group findip 198.51.100.2` - print all flows involving 198.51.100.2
-* `flowlogs_reader flowlog_group findip aggregate` - aggregate the flows by 5-tuple, then print them as a tab-separated stream (with a header)
+* `flowlogs_reader flowlog_group aggregate` - aggregate the flows by 5-tuple, then print them as a tab-separated stream (with a header)
 
 You may combine the output of `flowlogs_reader` with other command line utilities:
 
