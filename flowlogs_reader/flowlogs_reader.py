@@ -133,7 +133,73 @@ class FlowRecord(object):
         return cls({'message': message})
 
 
-class FlowLogsReader(object):
+class BaseReader(object):
+    def __init__(
+        self,
+        client_type,
+        region_name=None,
+        profile_name=None,
+        start_time=None,
+        end_time=None,
+        boto_client_kwargs=None,
+        boto_client=None,
+    ):
+        # Get a boto3 client with which to perform queries
+        if boto_client is not None:
+            self.boto_client = boto_client
+        else:
+            self.boto_client = self._get_client(
+                client_type, region_name, profile_name, boto_client_kwargs
+            )
+
+        # If no time filters are given use the last hour
+        now = datetime.utcnow()
+        self.start_time = start_time or now - timedelta(hours=1)
+        self.end_time = end_time or now
+
+        # Initialize the iterator
+        self.iterator = self._reader()
+
+    def _get_client(
+        self, client_type, region_name, profile_name, boto_client_kwargs
+    ):
+        session_kwargs = {}
+        if region_name is not None:
+            session_kwargs['region_name'] = region_name
+
+        if profile_name is not None:
+            session_kwargs['profile_name'] = profile_name
+
+        client_kwargs = boto_client_kwargs or {}
+
+        session = boto3.session.Session(**session_kwargs)
+        try:
+            boto_client = session.client(client_type, **client_kwargs)
+        except NoRegionError:
+            boto_client = session.client(
+                client_type, region_name=DEFAULT_REGION_NAME, **client_kwargs
+            )
+
+        return boto_client
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return next(self.iterator)
+
+    def next(self):
+        # For Python 2 compatibility
+        return self.__next__()
+
+    def _reader(self):
+        # Loops through each log stream and its events, yielding a parsed
+        # version of each event.
+        for event in self._read_streams():
+            yield FlowRecord(event)
+
+
+class FlowLogsReader(BaseReader):
     """
     Returns an object that will yield VPC Flow Log records as Python objects.
     * `log_group_name` is the name of the CloudWatch Logs group that stores
@@ -151,22 +217,9 @@ class FlowLogsReader(object):
     """
 
     def __init__(
-        self,
-        log_group_name,
-        region_name=None,
-        profile_name=None,
-        start_time=None,
-        end_time=None,
-        filter_pattern=DEFAULT_FILTER_PATTERN,
-        boto_client_kwargs=None,
-        boto_client=None,
+        self, log_group_name, filter_pattern=DEFAULT_FILTER_PATTERN, **kwargs
     ):
-        if boto_client is not None:
-            self.logs_client = boto_client
-        else:
-            self.logs_client = self._get_client(
-                region_name, profile_name, boto_client_kwargs
-            )
+        super(FlowLogsReader, self).__init__('logs', **kwargs)
         self.log_group_name = log_group_name
 
         self.paginator_kwargs = {}
@@ -174,48 +227,11 @@ class FlowLogsReader(object):
         if filter_pattern is not None:
             self.paginator_kwargs['filterPattern'] = filter_pattern
 
-        # If no time filters are given use the last hour
-        now = datetime.utcnow()
-        start_time = start_time or now - timedelta(hours=1)
-        end_time = end_time or now
-
-        self.start_ms = timegm(start_time.utctimetuple()) * 1000
-        self.end_ms = timegm(end_time.utctimetuple()) * 1000
-
-        self.iterator = self._reader()
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        return next(self.iterator)
-
-    def next(self):
-        # For Python 2 compatibility
-        return self.__next__()
-
-    def _get_client(self, region_name, profile_name, boto_client_kwargs):
-        session_kwargs = {}
-        if region_name is not None:
-            session_kwargs['region_name'] = region_name
-
-        if profile_name is not None:
-            session_kwargs['profile_name'] = profile_name
-
-        client_kwargs = boto_client_kwargs or {}
-
-        session = boto3.session.Session(**session_kwargs)
-        try:
-            logs_client = session.client('logs', **client_kwargs)
-        except NoRegionError:
-            logs_client = session.client(
-                'logs', region_name=DEFAULT_REGION_NAME, **client_kwargs
-            )
-
-        return logs_client
+        self.start_ms = timegm(self.start_time.utctimetuple()) * 1000
+        self.end_ms = timegm(self.end_time.utctimetuple()) * 1000
 
     def _read_streams(self):
-        paginator = self.logs_client.get_paginator('filter_log_events')
+        paginator = self.boto_client.get_paginator('filter_log_events')
         response_iterator = paginator.paginate(
             logGroupName=self.log_group_name,
             startTime=self.start_ms,
@@ -233,9 +249,3 @@ class FlowLogsReader(object):
                 pass
             else:
                 raise
-
-    def _reader(self):
-        # Loops through each log stream and its events, yielding a parsed
-        # version of each event.
-        for event in self._read_streams():
-            yield FlowRecord(event)
