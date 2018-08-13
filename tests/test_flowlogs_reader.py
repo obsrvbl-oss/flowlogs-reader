@@ -15,16 +15,25 @@
 from __future__ import division, print_function
 
 from datetime import datetime
+from gzip import open as gz_open
+from io import BytesIO
 from unittest import TestCase
 
+import boto3
 from botocore.exceptions import NoRegionError, PaginationError
+from botocore.stub import Stubber
 
 try:
     from unittest.mock import MagicMock, patch
 except ImportError:
     from mock import MagicMock, patch
 
-from flowlogs_reader import aggregated_records, FlowRecord, FlowLogsReader
+from flowlogs_reader import (
+    aggregated_records,
+    FlowRecord,
+    FlowLogsReader,
+    S3FlowLogsReader,
+)
 from flowlogs_reader.flowlogs_reader import (
     DEFAULT_REGION_NAME,
     DUPLICATE_NEXT_TOKEN_MESSAGE,
@@ -289,6 +298,121 @@ class FlowLogsReaderTestCase(TestCase):
 
         # Fail for unexpected PaginationError
         self.assertRaises(PaginationError, lambda: list(self.inst))
+
+
+class S3FlowLogsReaderTestCase(TestCase):
+    def setUp(self):
+        self.start_time = datetime(2015, 8, 12, 12, 0, 0)
+        self.end_time = datetime(2015, 8, 12, 13, 0, 0)
+
+    def tearDown(self):
+        pass
+
+    def test_iteration(self):
+        boto_client = boto3.client('s3')
+        with Stubber(boto_client) as stubbed_client:
+            # Accounts call
+            accounts_response = {
+                'ResponseMetadata': {'HTTPStatusCode': 200},
+                'CommonPrefixes': [{'Prefix': '/AWSLogs/123456789010/'}]
+            }
+            accounts_params = {
+                'Bucket': 'example-bucket',
+                'Delimiter': '/',
+                'Prefix': '/AWSLogs/'
+            }
+            stubbed_client.add_response(
+                'list_objects_v2', accounts_response, accounts_params
+            )
+            # Regions call
+            regions_response = {
+                'ResponseMetadata': {'HTTPStatusCode': 200},
+                'CommonPrefixes': [
+                    {'Prefix': '/AWSLogs/123456789010/vpcflowlogs/pangaea-1/'}
+                ]
+            }
+            regions_params = {
+                'Bucket': 'example-bucket',
+                'Delimiter': '/',
+                'Prefix': '/AWSLogs/123456789010/vpcflowlogs/'
+            }
+            stubbed_client.add_response(
+                'list_objects_v2', regions_response, regions_params
+            )
+            # List objects call
+            list_response = {
+                'ResponseMetadata': {'HTTPStatusCode': 200},
+                'Contents': [
+                    # Too early - not downloaded
+                    {
+                        'Key': (
+                            '/AWSLogs/123456789010/vpcflowlogs/pangaea-1/'
+                            '2015/08/12/'
+                            '123456789010_vpcflowlogs_'
+                            'pangaea-1_fl-102010_'
+                            '20150812T1155Z_'
+                            'h45h.log.gz'
+                        ),
+                    },
+                    # Right on time
+                    {
+                        'Key': (
+                            '/AWSLogs/123456789010/vpcflowlogs/pangaea-1/'
+                            '2015/08/12/'
+                            '123456789010_vpcflowlogs_'
+                            'pangaea-1_fl-102010_'
+                            '20150812T1200Z_'
+                            'h45h.log.gz'
+                        ),
+                    },
+                ]
+            }
+            list_params = {
+                'Bucket': 'example-bucket',
+                'Prefix': (
+                    '/AWSLogs/123456789010/vpcflowlogs/pangaea-1/2015/08/12/'
+                )
+            }
+            stubbed_client.add_response(
+                'list_objects_v2', list_response, list_params
+            )
+            # Get object call
+            header = ' '.join(FlowRecord.__slots__)
+            text = '\n'.join([header] + SAMPLE_RECORDS)
+            with BytesIO() as f:
+                with gz_open(f, 'wt') as gz_f:
+                    gz_f.write(text)
+                data = f.getvalue()
+
+            get_response = {
+                'ResponseMetadata': {'HTTPStatusCode': 200},
+                'Body': BytesIO(data),
+            }
+            get_params = {
+                'Bucket': 'example-bucket',
+                'Key': (
+                    '/AWSLogs/123456789010/vpcflowlogs/pangaea-1/'
+                    '2015/08/12/'
+                    '123456789010_vpcflowlogs_'
+                    'pangaea-1_fl-102010_'
+                    '20150812T1200Z_'
+                    'h45h.log.gz'
+                )
+            }
+            stubbed_client.add_response(
+                'get_object', get_response, get_params
+            )
+            # Do the deed
+            stubbed_client.activate()
+            reader = S3FlowLogsReader(
+                'example-bucket',
+                start_time=self.start_time,
+                end_time=self.end_time,
+                boto_client=boto_client,
+            )
+            actual = list(reader)
+            expected = [FlowRecord.from_message(x) for x in SAMPLE_RECORDS]
+            self.assertEqual(actual, expected)
 
 
 class AggregationTestCase(TestCase):
