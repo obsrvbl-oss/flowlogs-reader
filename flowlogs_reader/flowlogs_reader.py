@@ -16,6 +16,9 @@ from __future__ import division, print_function
 
 from calendar import timegm
 from datetime import datetime, timedelta
+from gzip import open as gz_open
+from io import BytesIO
+from os.path import basename
 
 import boto3
 from botocore.exceptions import NoRegionError, PaginationError
@@ -249,3 +252,48 @@ class FlowLogsReader(BaseReader):
                 pass
             else:
                 raise
+
+
+class S3FlowLogsReader(BaseReader):
+    def __init__(self, destination, **kwargs):
+        super(S3FlowLogsReader, self).__init__('s3', **kwargs)
+        destination_parts = destination.split('/', 1)
+        if len(destination_parts) == 1:
+            self.bucket = destination_parts[0]
+        else:
+            self.bucket = destination_parts[0]
+            self.prefix = destination_parts[1]
+
+    def _read_file(self, key):
+        resp = self.boto_client.get_object(Bucket=self.bucket, Key=key)
+        fileobj = BytesIO(resp['Body'].read())
+        with gz_open(fileobj, mode='rt') as infile:
+            # Skip the header
+            next(infile)
+
+            # Yield the rest of the lines
+            for line in infile:
+                yield line
+
+    def _get_keys(self):
+        paginator = self.boto_client.get_paginator('list_objects_v2')
+        all_pages = paginator.paginate(Bucket=self.bucket, Prefix=self.prefix)
+        for page in all_pages:
+            for item in page.get('Contents', []):
+                key = item['Key']
+                file_name = basename(key)
+                try:
+                    dt = datetime.strptime(
+                        file_name.rsplit('_', 2)[1], '%Y%m%dT%H%MZ'
+                    )
+                except (IndexError, ValueError):
+                    continue
+
+                if self.start_time <= dt < self.end_time:
+                    yield key
+
+    def _read_streams(self):
+        all_keys = self._get_keys()
+        for key in all_keys:
+            for message in self._read_file(key):
+                yield {'message': message}
