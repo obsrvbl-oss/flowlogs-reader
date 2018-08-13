@@ -55,6 +55,7 @@ setup(
     install_requires=[
         'boto3>=1.7.75',
         'botocore>=1.10.75',
+        'python-dateutil>=2.7.0'
     ],
     tests_require=['mock'] if PY2 else [],
 )

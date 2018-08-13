@@ -22,6 +22,7 @@ from os.path import basename
 
 import boto3
 from botocore.exceptions import NoRegionError, PaginationError
+from dateutil.rrule import rrule, DAILY
 
 DEFAULT_FILTER_PATTERN = (
     '[version="2", account_id, interface_id, srcaddr, dstaddr, '
@@ -275,6 +276,25 @@ class S3FlowLogsReader(BaseReader):
             for line in infile:
                 yield line
 
+    def _get_date_prefixes(self):
+        dtstart = self.start_time.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        until = self.end_time.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        for dt in rrule(freq=DAILY, dtstart=dtstart, until=until):
+            yield dt.strftime('%Y/%m/%d/')
+
+    def _get_region_prefixes(self, account_prefix):
+        resp = self.boto_client.list_objects_v2(
+            Bucket=self.bucket,
+            Delimiter='/',
+            Prefix=account_prefix + 'vpcflowlogs/'
+        )
+        for item in resp.get('CommonPrefixes', []):
+            yield item['Prefix']
+
     def _get_account_prefixes(self):
         prefix = self.prefix.rstrip('/') + '/AWSLogs/'
         resp = self.boto_client.list_objects_v2(
@@ -283,7 +303,7 @@ class S3FlowLogsReader(BaseReader):
             Prefix=prefix
         )
         for item in resp.get('CommonPrefixes', []):
-            yield item['Prefix'].rstrip('/')
+            yield item['Prefix']
 
     def _get_keys(self, prefix):
         paginator = self.boto_client.get_paginator('list_objects_v2')
@@ -303,9 +323,10 @@ class S3FlowLogsReader(BaseReader):
                     yield key
 
     def _read_streams(self):
-        all_prefixes = self._get_account_prefixes()
-        for prefix in all_prefixes:
-            prefix_keys = self._get_keys(prefix)
-            for key in prefix_keys:
-                for message in self._read_file(key):
-                    yield {'message': message}
+        for account_prefix in self._get_account_prefixes():
+            for region_prefix in self._get_region_prefixes(account_prefix):
+                for day_prefix in self._get_date_prefixes():
+                    prefix = region_prefix + day_prefix
+                    for key in self._get_keys(prefix):
+                        for message in self._read_file(key):
+                            yield {'message': message}
