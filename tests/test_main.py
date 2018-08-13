@@ -259,3 +259,26 @@ class MainTestCase(TestCase):
             '2015-08-12 13:47:43',
         ]
         self.assertEqual(actual_line, expected_line)
+
+    @patch('flowlogs_reader.__main__.S3FlowLogsReader', autospec=True)
+    @patch('flowlogs_reader.__main__.print', create=True)
+    def test_s3_destination(self, mock_out, mock_reader):
+        mock_out.stdout = io.BytesIO()
+        mock_reader.return_value = SAMPLE_RECORDS
+        main(
+            [
+                'mybucket/myprefix',
+                '--location-type', 's3',
+                '--include-accounts', '999999999998, 999999999999',
+                '--include-regions', 'us-east-1,us-east-2',
+            ]
+        )
+        mock_reader.assert_called_once_with(
+            location='mybucket/myprefix',
+            include_accounts=['999999999998', '999999999999'],
+            include_regions=['us-east-1', 'us-east-2'],
+        )
+        for call, record in zip_longest(mock_out.mock_calls, SAMPLE_INPUT):
+            __, args, kwargs = call
+            line = args[0]
+            self.assertEqual(line, record)
