@@ -16,7 +16,7 @@ from __future__ import division, print_function
 
 from calendar import timegm
 from datetime import datetime, timedelta
-from gzip import open as gz_open
+from gzip import GzipFile
 from io import BytesIO
 from os.path import basename
 
@@ -277,14 +277,14 @@ class S3FlowLogsReader(BaseReader):
 
     def _read_file(self, key):
         resp = self.boto_client.get_object(Bucket=self.bucket, Key=key)
-        fileobj = BytesIO(resp['Body'].read())
-        with gz_open(fileobj, mode='rt') as infile:
-            # Skip the header
-            next(infile)
+        with BytesIO(resp['Body'].read()) as f:
+            with GzipFile(fileobj=f, mode='rb') as gz_f:
+                # Skip the header
+                next(gz_f)
 
-            # Yield the rest of the lines
-            for line in infile:
-                yield line
+                # Yield the rest of the lines
+                for line in gz_f:
+                    yield line.decode('utf-8')
 
     def _get_keys(self, prefix):
         # S3 keys have a file name like:
