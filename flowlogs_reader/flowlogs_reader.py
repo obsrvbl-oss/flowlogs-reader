@@ -275,9 +275,19 @@ class S3FlowLogsReader(BaseReader):
             for line in infile:
                 yield line
 
-    def _get_keys(self):
+    def _get_account_prefixes(self):
+        prefix = self.prefix.rstrip('/') + '/AWSLogs/'
+        resp = self.boto_client.list_objects_v2(
+            Bucket=self.bucket,
+            Delimiter='/',
+            Prefix=prefix
+        )
+        for item in resp.get('CommonPrefixes', []):
+            yield item['Prefix'].rstrip('/')
+
+    def _get_keys(self, prefix):
         paginator = self.boto_client.get_paginator('list_objects_v2')
-        all_pages = paginator.paginate(Bucket=self.bucket, Prefix=self.prefix)
+        all_pages = paginator.paginate(Bucket=self.bucket, Prefix=prefix)
         for page in all_pages:
             for item in page.get('Contents', []):
                 key = item['Key']
@@ -293,7 +303,9 @@ class S3FlowLogsReader(BaseReader):
                     yield key
 
     def _read_streams(self):
-        all_keys = self._get_keys()
-        for key in all_keys:
-            for message in self._read_file(key):
-                yield {'message': message}
+        all_prefixes = self._get_account_prefixes()
+        for prefix in all_prefixes:
+            prefix_keys = self._get_keys(prefix)
+            for key in prefix_keys:
+                for message in self._read_file(key):
+                    yield {'message': message}
