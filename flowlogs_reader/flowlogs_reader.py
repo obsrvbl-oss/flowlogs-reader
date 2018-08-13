@@ -264,13 +264,9 @@ class S3FlowLogsReader(BaseReader):
         **kwargs
     ):
         super(S3FlowLogsReader, self).__init__('s3', **kwargs)
-        location_parts = location.split('/', 1)
-        if len(location_parts) == 1:
-            self.bucket = location_parts[0]
-            self.prefix = ''
-        else:
-            self.bucket = location_parts[0]
-            self.prefix = location_parts[1]
+
+        location_parts = (location.rstrip('/') + '/').split('/', 1)
+        self.bucket, self.prefix = location_parts
 
         self.include_accounts = (
             None if include_accounts is None else set(include_accounts)

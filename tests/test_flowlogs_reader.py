@@ -314,7 +314,12 @@ class S3FlowLogsReaderTestCase(TestCase):
             # Accounts call
             accounts_response = {
                 'ResponseMetadata': {'HTTPStatusCode': 200},
-                'CommonPrefixes': [{'Prefix': '/AWSLogs/123456789010/'}]
+                'CommonPrefixes': [
+                    # This one is used
+                    {'Prefix': '/AWSLogs/123456789010/'},
+                    # This one is ignored
+                    {'Prefix': '/AWSLogs/123456789011/'},
+                ]
             }
             accounts_params = {
                 'Bucket': 'example-bucket',
@@ -328,7 +333,10 @@ class S3FlowLogsReaderTestCase(TestCase):
             regions_response = {
                 'ResponseMetadata': {'HTTPStatusCode': 200},
                 'CommonPrefixes': [
-                    {'Prefix': '/AWSLogs/123456789010/vpcflowlogs/pangaea-1/'}
+                    # This one is used
+                    {'Prefix': '/AWSLogs/123456789010/vpcflowlogs/pangaea-1/'},
+                    # This one is ignored
+                    {'Prefix': '/AWSLogs/123456789010/vpcflowlogs/pangaea-2/'},
                 ]
             }
             regions_params = {
@@ -363,6 +371,13 @@ class S3FlowLogsReaderTestCase(TestCase):
                             'pangaea-1_fl-102010_'
                             '20150812T1200Z_'
                             'h45h.log.gz'
+                        ),
+                    },
+                    # Some fool put a different key here
+                    {
+                        'Key': (
+                            '/AWSLogs/123456789010/vpcflowlogs/pangaea-1/'
+                            '2015/08/12/test_file.log.gz'
                         ),
                     },
                 ]
@@ -408,6 +423,8 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'example-bucket',
                 start_time=self.start_time,
                 end_time=self.end_time,
+                include_accounts={'123456789010'},
+                include_regions={'pangaea-1'},
                 boto_client=boto_client,
             )
             actual = list(reader)
