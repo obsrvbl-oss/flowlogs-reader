@@ -261,6 +261,7 @@ class S3FlowLogsReader(BaseReader):
         destination_parts = destination.split('/', 1)
         if len(destination_parts) == 1:
             self.bucket = destination_parts[0]
+            self.prefix = ''
         else:
             self.bucket = destination_parts[0]
             self.prefix = destination_parts[1]
