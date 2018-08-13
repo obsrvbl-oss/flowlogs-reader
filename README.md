@@ -7,10 +7,11 @@
 Amazon's VPC Flow Logs are analagous to NetFlow and IPFIX logs, and can be used for security and performance analysis.
 [Observable Networks](https://observable.net) uses VPC Flow logs as an input to endpoint modeling for security monitoring.
 
-This project contains a Python library that makes retrieving VPC Flow Logs from Amazon CloudWatch Logs a bit easier. The library provides:
+This project contains:
+* A utility for working with VPC Flow Logs on the command line
+* A Python library for retrieving and working with VPC Flow logs
 
-* A data structure that parses the Flow Log records into easily-used Python objects.
-* A utility that makes iterating over all the Flow Log records in a log group very simple.
+The tools support reading Flow Logs from both [CloudWatch Logs](https://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs-cwl.html) and [S3](https://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs-s3.html).
 
 The library builds on [boto3](https://github.com/boto/boto3) and should work on both Python 2.7 and 3.4+.
 
@@ -40,28 +41,36 @@ python setup.py develop
 It assumes your AWS credentials are available through environment variables, a boto configuration file, or through IAM metadata.
 Some example uses are below.
 
+__Location types__
+
+`flowlogs_reader` has one required argument, `location`. By default that is interpreted as a CloudWatch Logs group.
+
+To use an S3 location, specify `--location-type='s3'`:
+
+* `flowlogs_reader "bucket-name/optional-prefix"`
+
 __Printing flows__
 
 The default action is to `print` flows. You may also specify the `ipset`, `findip`, and `aggregate` actions:
 
-* `flowlogs_reader flowlog_group` - print all flows in the past hour
-* `flowlogs_reader flowlog_group print 10` - print the first 10 flows from the past hour
-* `flowlogs_reader flowlog_group ipset` - print the unique IPs seen in the past hour
-* `flowlogs_reader flowlog_group findip 198.51.100.2` - print all flows involving 198.51.100.2
-* `flowlogs_reader flowlog_group aggregate` - aggregate the flows by 5-tuple, then print them as a tab-separated stream (with a header)
+* `flowlogs_reader location` - print all flows in the past hour
+* `flowlogs_reader location print 10` - print the first 10 flows from the past hour
+* `flowlogs_reader location ipset` - print the unique IPs seen in the past hour
+* `flowlogs_reader location findip 198.51.100.2` - print all flows involving 198.51.100.2
+* `flowlogs_reader location aggregate` - aggregate the flows by 5-tuple, then print them as a tab-separated stream (with a header)
 
 You may combine the output of `flowlogs_reader` with other command line utilities:
 
-* `flowlogs_reader flowlog_group | grep REJECT` - print all `REJECT`ed Flow Log records
-* `flowlogs_reader flowlog_group | awk '$6 = 443'` - print all traffic from port 443
+* `flowlogs_reader location | grep REJECT` - print all `REJECT`ed Flow Log records
+* `flowlogs_reader location | awk '$6 = 443'` - print all traffic from port 443
 
 __Time windows__
 
 The default time window is the last hour. You may also specify a `--start-time` and/or an `--end-time`. The `-s` and `-e` switches may be used also:
 
-* `flowlogs_reader --start-time='2015-08-13 00:00:00' flowlog_group`
-* `flowlogs_reader --end-time='2015-08-14 00:00:00' flowlog_group`
-* `flowlogs_reader --start-time='2015-08-13 01:00:00' --end-time='2015-08-14 02:00:00' flowlog_group`
+* `flowlogs_reader --start-time='2015-08-13 00:00:00' location`
+* `flowlogs_reader --end-time='2015-08-14 00:00:00' location`
+* `flowlogs_reader --start-time='2015-08-13 01:00:00' --end-time='2015-08-14 02:00:00' location`
 
 Use the `--time-format` switch to control how start and end times are interpreted. The default is `'%Y-%m-%d %H:%M:%S'`. See the Python documentation for `strptime` for information on format strings.
 
@@ -69,10 +78,19 @@ __AWS options__
 
 Other command line switches:
 
-* `flowlogs_reader --region='us-west-2' flowlog_group` - connect to the given AWS region
-* `flowlogs_reader --profile='dev_profile' flowlog_group` - use the profile from your [local AWS configuration file](http://docs.aws.amazon.com/cli/latest/topic/config-vars.html) to specify credentials and regions
-* `flowlogs_reader --filter-pattern='REJECT' flowlog_group` - use the given [filter pattern](http://docs.aws.amazon.com/AmazonCloudWatch/latest/DeveloperGuide/FilterAndPatternSyntax.html) to have the server limit the output
-* `flowlogs_reader --role-arn='arn:aws:iam::12345678901:role/myrole' --external-id='0a1b2c3d' flowlog_group` - use the given role and external ID to connect to a 3rd party's account using [`sts assume-role`](http://docs.aws.amazon.com/cli/latest/reference/sts/assume-role.html)
+* `flowlogs_reader --region='us-west-2' location` - connect to the given AWS region
+* `flowlogs_reader --profile='dev_profile' location` - use the profile from your [local AWS configuration file](http://docs.aws.amazon.com/cli/latest/topic/config-vars.html) to specify credentials and regions
+* `flowlogs_reader --role-arn='arn:aws:iam::12345678901:role/myrole' --external-id='0a1b2c3d' location` - use the given role and external ID to connect to a 3rd party's account using [`sts assume-role`](http://docs.aws.amazon.com/cli/latest/reference/sts/assume-role.html)
+
+For CloudWatch Logs locations:
+
+* `flowlogs_reader --filter-pattern='REJECT' location` - use the given [filter pattern](http://docs.aws.amazon.com/AmazonCloudWatch/latest/DeveloperGuide/FilterAndPatternSyntax.html) to have the server limit the output
+
+For S3 locations:
+
+* `flowlogs_reader --include-accounts='12345678901,12345678902'` - return logs only for the given accounts
+* `flowlogs_reader --include-regions='us-east-1,us-east-2'` - return logs only for the given regions
+
 
 ## Module Usage
 
@@ -110,7 +128,7 @@ And turns it into a Python object like this:
 
 You may use the `FlowRecord.from_message(...)` constructor if you have a line of log text instead of an event dictionary.
 
-`FlowLogsReader` takes the name of a log group and can then yield all the Flow Log records from that group.
+`FlowLogsReader` reads from CloudWatch Logs. It takes the name of a log group and can then yield all the Flow Log records from that group.
 
 ```python
 >>> from flowlogs_reader import FlowLogsReader
@@ -120,15 +138,25 @@ You may use the `FlowRecord.from_message(...)` constructor if you have a line of
 176
 ```
 
-By default it will retrieve records from log streams that were ingested in the last hour, and yield records from those log streams in that same time window.
+`S3FlowLogsReader` reads from S3. It takes a `bucket` name or a `bucket/prefix` identifier.
+
+By default these classes will yield records from the last hour.
 
 You can control what's retrieved with these parameters:
 * `start_time` and `end_time` are Python `datetime.datetime` objects
-* `filter_pattern` is a string like `REJECT` or `443` used to filter the logs. See the examples below.
 * `region_name` is a string like `'us-east-1'`. This will be used to create a [boto3 Session object](http://boto3.readthedocs.io/en/latest/reference/core/session.html#boto3.session.Session).
 * `profile_name` is a string like `'my-profile'`
 * `boto_client_kwargs` is a dictionary of parameters to pass when creating the [boto3 client](http://boto3.readthedocs.io/en/latest/reference/core/session.html#boto3.session.Session.client).
 * `boto_client` is a boto3 client object. This takes overrides `region_name`, `profile_name`, and `boto_client_kwargs`.
+
+When using `FlowLogsReader` with CloudWatch Logs:
+
+* The `filter_pattern` keyword is a string like `REJECT` or `443` used to filter the logs. See the examples below.
+
+When using `S3FlowLogsReader` with S3:
+
+* The `include_accounts` keyword is an iterable of account identifiers (as strings) used to filter the logs.
+* The `include_regions` keyword is an iterable of region names used to filter the logs.
 
 ## Examples
 
@@ -168,7 +196,7 @@ for profile_name in profile_names:
         ip_set.add(record.dstaddr)
 ```
 
-Apply a filter for UDP traffic that was logged normally.
+Apply a filter for UDP traffic that was logged normally (CloudWatch Logs only):
 
 ```python
 FILTER_PATTERN = (
@@ -182,8 +210,18 @@ records = list(flow_log_reader)
 print(len(records))
 ```
 
+Retrieve logs from a list of regions:
+
+```python
+from flowlogs_reader import S3FlowLogsReader
+
+reader = S3FlowLogsReader('example-bucket/optional-prefix', include_regions=['us-east-1', 'us-east-2'])
+records = list(reader)
+print(len(records))
+```
+
 You may aggregate records with the `aggregate_records` function.
-Pass in a `FlowLogsReader` object and optionally a `key_fields` tuple.
+Pass in a `FlowLogsReader` or `S3FlowLogsReader` object and optionally a `key_fields` tuple.
 Python `dict` objects will be yielded representing the aggregated flow records.
 By default the typical `('srcaddr', 'dstaddr', 'srcport', 'dstport', 'protocol')` will be used.
 The `start`, `end`, `packets`, and `bytes` items will be aggregated.
