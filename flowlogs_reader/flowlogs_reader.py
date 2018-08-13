@@ -276,36 +276,10 @@ class S3FlowLogsReader(BaseReader):
             for line in infile:
                 yield line
 
-    def _get_date_prefixes(self):
-        dtstart = self.start_time.replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        until = self.end_time.replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        for dt in rrule(freq=DAILY, dtstart=dtstart, until=until):
-            yield dt.strftime('%Y/%m/%d/')
-
-    def _get_region_prefixes(self, account_prefix):
-        resp = self.boto_client.list_objects_v2(
-            Bucket=self.bucket,
-            Delimiter='/',
-            Prefix=account_prefix + 'vpcflowlogs/'
-        )
-        for item in resp.get('CommonPrefixes', []):
-            yield item['Prefix']
-
-    def _get_account_prefixes(self):
-        prefix = self.prefix.rstrip('/') + '/AWSLogs/'
-        resp = self.boto_client.list_objects_v2(
-            Bucket=self.bucket,
-            Delimiter='/',
-            Prefix=prefix
-        )
-        for item in resp.get('CommonPrefixes', []):
-            yield item['Prefix']
-
     def _get_keys(self, prefix):
+        # S3 keys have a file name like:
+        # account_vpcflowlogs_region_flow-logs-id_datetime_hash.log.gz
+        # Yield the keys for files relevant to our time range
         paginator = self.boto_client.get_paginator('list_objects_v2')
         all_pages = paginator.paginate(Bucket=self.bucket, Prefix=prefix)
         for page in all_pages:
@@ -321,6 +295,41 @@ class S3FlowLogsReader(BaseReader):
 
                 if self.start_time <= dt < self.end_time:
                     yield key
+
+    def _get_date_prefixes(self):
+        # Each base_location/AWSLogs/account_number/vpcflowlogs/region_name/
+        # prefix has files organized in year/month/day directories.
+        # Yield the year/month/day/ fragments that are relevant to our
+        # time range
+        dtstart = self.start_time.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        until = self.end_time.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        for dt in rrule(freq=DAILY, dtstart=dtstart, until=until):
+            yield dt.strftime('%Y/%m/%d/')
+
+    def _get_region_prefixes(self, account_prefix):
+        # Yield each prefix of the type:
+        # base_location/AWSLogs/account_number/vpcflowlogs/region_name/
+        resp = self.boto_client.list_objects_v2(
+            Bucket=self.bucket,
+            Delimiter='/',
+            Prefix=account_prefix + 'vpcflowlogs/'
+        )
+        for item in resp.get('CommonPrefixes', []):
+            yield item['Prefix']
+
+    def _get_account_prefixes(self):
+        # Yield each prefix of the type:
+        # base_location/AWSLogs/account_number/
+        prefix = self.prefix.rstrip('/') + '/AWSLogs/'
+        resp = self.boto_client.list_objects_v2(
+            Bucket=self.bucket, Delimiter='/', Prefix=prefix
+        )
+        for item in resp.get('CommonPrefixes', []):
+            yield item['Prefix']
 
     def _read_streams(self):
         for account_prefix in self._get_account_prefixes():
