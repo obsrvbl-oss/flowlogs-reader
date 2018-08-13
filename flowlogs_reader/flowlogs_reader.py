@@ -256,7 +256,13 @@ class FlowLogsReader(BaseReader):
 
 
 class S3FlowLogsReader(BaseReader):
-    def __init__(self, destination, **kwargs):
+    def __init__(
+        self,
+        destination,
+        include_accounts=None,
+        include_regions=None,
+        **kwargs
+    ):
         super(S3FlowLogsReader, self).__init__('s3', **kwargs)
         destination_parts = destination.split('/', 1)
         if len(destination_parts) == 1:
@@ -265,6 +271,13 @@ class S3FlowLogsReader(BaseReader):
         else:
             self.bucket = destination_parts[0]
             self.prefix = destination_parts[1]
+
+        self.include_accounts = (
+            None if include_accounts is None else set(include_accounts)
+        )
+        self.include_regions = (
+            None if include_regions is None else set(include_regions)
+        )
 
     def _read_file(self, key):
         resp = self.boto_client.get_object(Bucket=self.bucket, Key=key)
@@ -320,7 +333,13 @@ class S3FlowLogsReader(BaseReader):
             Prefix=account_prefix + 'vpcflowlogs/'
         )
         for item in resp.get('CommonPrefixes', []):
-            yield item['Prefix']
+            prefix = item['Prefix']
+            if self.include_regions is not None:
+                region_name = prefix.rsplit('/', 2)[1]
+                if region_name not in self.include_regions:
+                    continue
+
+            yield prefix
 
     def _get_account_prefixes(self):
         # Yield each prefix of the type:
@@ -330,7 +349,13 @@ class S3FlowLogsReader(BaseReader):
             Bucket=self.bucket, Delimiter='/', Prefix=prefix
         )
         for item in resp.get('CommonPrefixes', []):
-            yield item['Prefix']
+            prefix = item['Prefix']
+            if self.include_accounts is not None:
+                account_id = prefix.rsplit('/', 2)[1]
+                if account_id not in self.include_accounts:
+                    continue
+
+            yield prefix
 
     def _read_streams(self):
         for account_prefix in self._get_account_prefixes():
