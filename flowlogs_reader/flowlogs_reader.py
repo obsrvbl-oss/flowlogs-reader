@@ -340,7 +340,8 @@ class S3FlowLogsReader(BaseReader):
     def _get_account_prefixes(self):
         # Yield each prefix of the type:
         # base_location/AWSLogs/account_number/
-        prefix = self.prefix.rstrip('/') + '/AWSLogs/'
+        prefix = self.prefix.strip('/') + '/AWSLogs/'
+        prefix = prefix.lstrip('/')
         resp = self.boto_client.list_objects_v2(
             Bucket=self.bucket, Delimiter='/', Prefix=prefix
         )

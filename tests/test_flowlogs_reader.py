@@ -316,15 +316,15 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'ResponseMetadata': {'HTTPStatusCode': 200},
                 'CommonPrefixes': [
                     # This one is used
-                    {'Prefix': '/AWSLogs/123456789010/'},
+                    {'Prefix': 'AWSLogs/123456789010/'},
                     # This one is ignored
-                    {'Prefix': '/AWSLogs/123456789011/'},
+                    {'Prefix': 'AWSLogs/123456789011/'},
                 ]
             }
             accounts_params = {
                 'Bucket': 'example-bucket',
                 'Delimiter': '/',
-                'Prefix': '/AWSLogs/'
+                'Prefix': 'AWSLogs/'
             }
             stubbed_client.add_response(
                 'list_objects_v2', accounts_response, accounts_params
@@ -334,15 +334,15 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'ResponseMetadata': {'HTTPStatusCode': 200},
                 'CommonPrefixes': [
                     # This one is used
-                    {'Prefix': '/AWSLogs/123456789010/vpcflowlogs/pangaea-1/'},
+                    {'Prefix': 'AWSLogs/123456789010/vpcflowlogs/pangaea-1/'},
                     # This one is ignored
-                    {'Prefix': '/AWSLogs/123456789010/vpcflowlogs/pangaea-2/'},
+                    {'Prefix': 'AWSLogs/123456789010/vpcflowlogs/pangaea-2/'},
                 ]
             }
             regions_params = {
                 'Bucket': 'example-bucket',
                 'Delimiter': '/',
-                'Prefix': '/AWSLogs/123456789010/vpcflowlogs/'
+                'Prefix': 'AWSLogs/123456789010/vpcflowlogs/'
             }
             stubbed_client.add_response(
                 'list_objects_v2', regions_response, regions_params
@@ -354,7 +354,7 @@ class S3FlowLogsReaderTestCase(TestCase):
                     # Too early - not downloaded
                     {
                         'Key': (
-                            '/AWSLogs/123456789010/vpcflowlogs/pangaea-1/'
+                            'AWSLogs/123456789010/vpcflowlogs/pangaea-1/'
                             '2015/08/12/'
                             '123456789010_vpcflowlogs_'
                             'pangaea-1_fl-102010_'
@@ -365,7 +365,7 @@ class S3FlowLogsReaderTestCase(TestCase):
                     # Right on time
                     {
                         'Key': (
-                            '/AWSLogs/123456789010/vpcflowlogs/pangaea-1/'
+                            'AWSLogs/123456789010/vpcflowlogs/pangaea-1/'
                             '2015/08/12/'
                             '123456789010_vpcflowlogs_'
                             'pangaea-1_fl-102010_'
@@ -376,7 +376,7 @@ class S3FlowLogsReaderTestCase(TestCase):
                     # Some fool put a different key here
                     {
                         'Key': (
-                            '/AWSLogs/123456789010/vpcflowlogs/pangaea-1/'
+                            'AWSLogs/123456789010/vpcflowlogs/pangaea-1/'
                             '2015/08/12/test_file.log.gz'
                         ),
                     },
@@ -385,7 +385,7 @@ class S3FlowLogsReaderTestCase(TestCase):
             list_params = {
                 'Bucket': 'example-bucket',
                 'Prefix': (
-                    '/AWSLogs/123456789010/vpcflowlogs/pangaea-1/2015/08/12/'
+                    'AWSLogs/123456789010/vpcflowlogs/pangaea-1/2015/08/12/'
                 )
             }
             stubbed_client.add_response(
@@ -406,7 +406,7 @@ class S3FlowLogsReaderTestCase(TestCase):
             get_params = {
                 'Bucket': 'example-bucket',
                 'Key': (
-                    '/AWSLogs/123456789010/vpcflowlogs/pangaea-1/'
+                    'AWSLogs/123456789010/vpcflowlogs/pangaea-1/'
                     '2015/08/12/'
                     '123456789010_vpcflowlogs_'
                     'pangaea-1_fl-102010_'
