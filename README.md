@@ -47,7 +47,7 @@ __Location types__
 
 To use an S3 location, specify `--location-type='s3'`:
 
-* `flowlogs_reader "bucket-name/optional-prefix"`
+* `flowlogs_reader --location-type="s3" "bucket-name/optional-prefix"`
 
 __Printing flows__
 
@@ -88,8 +88,8 @@ For CloudWatch Logs locations:
 
 For S3 locations:
 
-* `flowlogs_reader --include-accounts='12345678901,12345678902'` - return logs only for the given accounts
-* `flowlogs_reader --include-regions='us-east-1,us-east-2'` - return logs only for the given regions
+* `flowlogs_reader --location-type='s3' --include-accounts='12345678901,12345678902' bucket-name/optional-prefix` - return logs only for the given accounts
+* `flowlogs_reader --location-type='s3' --include-regions='us-east-1,us-east-2' bucket-name/optional-prefix` - return logs only for the given regions
 
 
 ## Module Usage
