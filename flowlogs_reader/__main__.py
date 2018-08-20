@@ -23,7 +23,7 @@ from uuid import uuid4
 import boto3
 
 from .aggregation import aggregated_records
-from .flowlogs_reader import FlowLogsReader, SKIPDATA, NODATA
+from .flowlogs_reader import FlowLogsReader, S3FlowLogsReader, SKIPDATA, NODATA
 
 actions = {}
 
@@ -94,6 +94,11 @@ def get_reader(args):
     kwargs = {}
     time_format = args.time_format
 
+    if args.location_type == 'cwl':
+        cls = FlowLogsReader
+    elif args.location_type == 's3':
+        cls = S3FlowLogsReader
+
     if args.region:
         kwargs['region_name'] = args.region
 
@@ -106,8 +111,18 @@ def get_reader(args):
     if args.end_time:
         kwargs['end_time'] = datetime.strptime(args.end_time, time_format)
 
-    if args.filter_pattern:
+    if args.location_type == 'cwl' and args.filter_pattern:
         kwargs['filter_pattern'] = args.filter_pattern
+
+    if args.location_type == 's3' and args.include_accounts:
+        kwargs['include_accounts'] = [
+            x.strip() for x in args.include_accounts.split(',')
+        ]
+
+    if args.location_type == 's3' and args.include_regions:
+        kwargs['include_regions'] = [
+            x.strip() for x in args.include_regions.split(',')
+        ]
 
     # Switch roles for access to another account
     if args.role_arn:
@@ -128,28 +143,72 @@ def get_reader(args):
         logs_client = session.client('logs')
         kwargs['boto_client'] = logs_client
 
-    return FlowLogsReader(log_group_name=args.logGroupName, **kwargs)
+    return cls(args.location, **kwargs)
 
 
 def main(argv=None):
     argv = argv or sys.argv[1:]
-    parser = ArgumentParser(description='Read records from VPC Flow Logs')
-    parser.add_argument('logGroupName', type=str,
-                        help='name of flow log group to read')
+    parser = ArgumentParser(description='Read VPC Flow Log Records')
+    # Required paramters
+    parser.add_argument(
+        'location',
+        type=str,
+        help='CloudWatch Logs group name or S3 bucket/prefix'
+    )
     parser.add_argument('action', type=str, nargs='*', default=['print'],
                         help='action to take on log records')
-    parser.add_argument('--profile', type=str, default='',
-                        help='boto3 configuration profile to use')
-    parser.add_argument('--region', type=str, default='',
-                        help='AWS region the Log Group is in')
-    parser.add_argument('--start-time', '-s', type=str,
-                        help='filter stream records at or after this time')
-    parser.add_argument('--end-time', '-e', type=str,
-                        help='filter stream records before this time')
+    # Location paramters
+    parser.add_argument(
+        '--location-type',
+        type=str,
+        help='location type (CloudWatch Logs or S3), default is cwl',
+        choices=['cwl', 's3'],
+        default='cwl'
+    )
+    parser.add_argument(
+        '--region',
+        type=str,
+        default='',
+        help='AWS region for the location'
+    )
+    # Time filter paramters
+    parser.add_argument(
+        '--start-time',
+        '-s',
+        type=str,
+        help='return records at or after this time'
+    )
+    parser.add_argument(
+        '--end-time',
+        '-e',
+        type=str,
+        help='return records before this time'
+    )
     parser.add_argument('--time-format', type=str, default='%Y-%m-%d %H:%M:%S',
                         help='format of time to parse')
-    parser.add_argument('--filter-pattern', type=str,
-                        help='return records that match this pattern')
+    # Other filtering parameters
+    parser.add_argument(
+        '--filter-pattern',
+        type=str,
+        help='return records that match this pattern (CWL only)'
+    )
+    parser.add_argument(
+        '--include-accounts',
+        type=str,
+        help='comma-separated list of accounts to consider (S3 only)'
+    )
+    parser.add_argument(
+        '--include-regions',
+        type=str,
+        help='comma-separated list of regions to consider (S3 only)'
+    )
+    # AWS paramters
+    parser.add_argument(
+        '--profile',
+        type=str,
+        default='',
+        help='boto3 configuration profile to use'
+    )
     parser.add_argument('--role-arn', type=str,
                         help='assume role specified by this ARN')
     parser.add_argument('--external-id', type=str,

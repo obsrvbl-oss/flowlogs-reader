@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .aggregation import aggregated_records  # noqa
-from .flowlogs_reader import FlowRecord, FlowLogsReader  # noqa
+from .aggregation import aggregated_records
+from .flowlogs_reader import FlowRecord, FlowLogsReader, S3FlowLogsReader
 
-__all__ = ['aggregated_records', 'FlowRecord', 'FlowLogsReader']
+__all__ = [
+    'aggregated_records', 'FlowRecord', 'FlowLogsReader', 'S3FlowLogsReader'
+]
