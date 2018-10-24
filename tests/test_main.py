@@ -216,13 +216,49 @@ class MainTestCase(TestCase):
         mock_reader.return_value = []
         main(['--role-arn', 'myarn', '--external-id', 'uuid4', 'mygroup'])
 
-        mock_boto3.session.Session.assert_called_once_with(
+        session = mock_boto3.session.Session
+        session.assert_called_once_with(
             aws_access_key_id='myaccesskeyid',
             aws_secret_access_key='mysecretaccesskey',
             aws_session_token='mysessiontoken',
         )
+        session.return_value.client.assert_called_once_with('logs')
         mock_reader.assert_called_once_with(
             log_group_name='mygroup', boto_client=mock_client
+        )
+
+    @patch('flowlogs_reader.__main__.S3FlowLogsReader', autospec=True)
+    @patch('flowlogs_reader.__main__.boto3', autospec=True)
+    def test_main_assume_role_s3(self, mock_boto3, mock_reader):
+        mock_boto3.client.return_value.assume_role.return_value = {
+            'Credentials': {
+                'AccessKeyId': 'myaccesskeyid',
+                'SecretAccessKey': 'mysecretaccesskey',
+                'SessionToken': 'mysessiontoken',
+            }
+        }
+        mock_client = MagicMock()
+        mock_boto3.session.Session.return_value.client.return_value = (
+            mock_client
+        )
+        mock_reader.return_value = []
+        args = [
+            '--role-arn', 'myarn',
+            '--external-id', 'uuid4',
+            '--location-type', 's3',
+            'mybucket'
+        ]
+        main(args)
+
+        session = mock_boto3.session.Session
+        session.assert_called_once_with(
+            aws_access_key_id='myaccesskeyid',
+            aws_secret_access_key='mysecretaccesskey',
+            aws_session_token='mysessiontoken',
+        )
+        session.return_value.client.assert_called_once_with('s3')
+        mock_reader.assert_called_once_with(
+            'mybucket', boto_client=mock_client
         )
 
     @patch('flowlogs_reader.__main__.FlowLogsReader', autospec=True)

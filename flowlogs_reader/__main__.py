@@ -96,8 +96,10 @@ def get_reader(args):
 
     if args.location_type == 'cwl':
         cls = FlowLogsReader
+        client_type = 'logs'
     elif args.location_type == 's3':
         cls = S3FlowLogsReader
+        client_type = 's3'
 
     if args.region:
         kwargs['region_name'] = args.region
@@ -140,7 +142,7 @@ def get_reader(args):
             'aws_session_token': resp['Credentials']['SessionToken'],
         }
         session = boto3.session.Session(**session_kwargs)
-        logs_client = session.client('logs')
+        logs_client = session.client(client_type)
         kwargs['boto_client'] = logs_client
 
     return cls(args.location, **kwargs)
