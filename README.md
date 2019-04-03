@@ -13,7 +13,7 @@ This project contains:
 
 The tools support reading Flow Logs from both [CloudWatch Logs](https://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs-cwl.html) and [S3](https://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs-s3.html).
 
-The library builds on [boto3](https://github.com/boto/boto3) and should work on both Python 2.7 and 3.4+.
+The library builds on [boto3](https://github.com/boto/boto3) and should work on Python 3.4+.
 
 For information on VPC Flow Logs and how to enable them see [this post](https://aws.amazon.com/blogs/aws/vpc-flow-logs-log-and-view-network-traffic-flows/) at the AWS blog.
 You may use this library with the [kinesis-logs-reader](https://github.com/obsrvbl/kinesis-logs-reader) library when retrieving VPC flow logs from Amazon Kinesis.
