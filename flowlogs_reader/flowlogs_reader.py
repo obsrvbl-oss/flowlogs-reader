@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division, print_function
-
 from calendar import timegm
 from datetime import datetime, timedelta
-from gzip import GzipFile
+from gzip import open as gz_open
 from os.path import basename
 
 import boto3
@@ -37,7 +35,7 @@ SKIPDATA = 'SKIPDATA'
 NODATA = 'NODATA'
 
 
-class FlowRecord(object):
+class FlowRecord:
     """
     Given a VPC Flow Logs event dictionary, returns a Python object whose
     attributes match the field names in the event record. Integers are stored
@@ -136,7 +134,7 @@ class FlowRecord(object):
         return cls({'message': message})
 
 
-class BaseReader(object):
+class BaseReader:
     def __init__(
         self,
         client_type,
@@ -190,10 +188,6 @@ class BaseReader(object):
 
     def __next__(self):
         return next(self.iterator)
-
-    def next(self):
-        # For Python 2 compatibility
-        return self.__next__()
 
     def _reader(self):
         # Loops through each log stream and its events, yielding a parsed
@@ -276,13 +270,13 @@ class S3FlowLogsReader(BaseReader):
 
     def _read_file(self, key):
         resp = self.boto_client.get_object(Bucket=self.bucket, Key=key)
-        with GzipFile(fileobj=resp['Body'], mode='rb') as gz_f:
+        with gz_open(resp['Body'], mode='rt') as gz_f:
             # Skip the header
             next(gz_f)
 
             # Yield the rest of the lines
             for line in gz_f:
-                yield line.decode('utf-8')
+                yield line
 
     def _get_keys(self, prefix):
         # S3 keys have a file name like:

@@ -19,7 +19,7 @@ PY2 = sys.version_info[0] == 2
 
 setup(
     name='flowlogs_reader',
-    version='1.1.1',
+    version='2.0.0',
     license='Apache',
     url='https://github.com/obsrvbl/flowlogs-reader',
 
@@ -37,7 +37,6 @@ setup(
         'Intended Audience :: Information Technology',
         'Intended Audience :: System Administrators',
         'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
     ],
     entry_points={
@@ -47,6 +46,7 @@ setup(
     },
 
     packages=find_packages(exclude=[]),
+    python_requires='>=3.4',
     test_suite='tests',
 
     install_requires=[

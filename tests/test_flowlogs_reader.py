@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division, print_function
-
 from datetime import datetime
-from gzip import GzipFile
+from gzip import open as gz_open
 from io import BytesIO
 from unittest import TestCase
 
@@ -396,7 +394,7 @@ class S3FlowLogsReaderTestCase(TestCase):
             header = ' '.join(FlowRecord.__slots__)
             text = '\n'.join([header] + SAMPLE_RECORDS)
             with BytesIO() as f:
-                with GzipFile(fileobj=f, mode='wb') as gz_f:
+                with gz_open(f, mode='wb') as gz_f:
                     gz_f.write(text.encode('utf-8'))
                 data = f.getvalue()
 
