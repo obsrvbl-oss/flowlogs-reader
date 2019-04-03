@@ -21,6 +21,7 @@ from unittest import TestCase
 
 import boto3
 from botocore.exceptions import NoRegionError, PaginationError
+from botocore.response import StreamingBody
 from botocore.stub import Stubber
 
 try:
@@ -401,7 +402,7 @@ class S3FlowLogsReaderTestCase(TestCase):
 
             get_response = {
                 'ResponseMetadata': {'HTTPStatusCode': 200},
-                'Body': BytesIO(data),
+                'Body': StreamingBody(BytesIO(data), len(data)),
             }
             get_params = {
                 'Bucket': 'example-bucket',
