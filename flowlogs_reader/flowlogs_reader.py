@@ -102,7 +102,7 @@ class FlowRecord:
             ('vpc_id', str),
             ('subnet_id', str),
             ('instance_id', str),
-            ('tcp_flags', str),
+            ('tcp_flags', int),
             ('type', str),
             ('pkt_srcaddr', str),
             ('pkt_dstaddr', str),
