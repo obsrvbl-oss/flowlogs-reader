@@ -66,7 +66,7 @@ SAMPLE_RECORDS = [
 class FlowRecordTestCase(TestCase):
     def test_parse(self):
         flow_record = FlowRecord.from_cwl_event({'message': SAMPLE_RECORDS[0]})
-        actual = {x: getattr(flow_record, x) for x in FlowRecord.__slots__}
+        actual = flow_record.to_dict()
         expected = {
             'account_id': '123456789010',
             'action': 'ACCEPT',
@@ -388,7 +388,9 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'list_objects_v2', list_response, list_params
             )
             # Get object call
-            fields = [key.replace('_', '-') for key in FlowRecord.__slots__]
+            fields = [
+                key.replace('_', '-') for key in FlowRecord.__slots__[:14]
+            ]
             header = ' '.join(fields)
             text = '\n'.join([header] + SAMPLE_RECORDS)
             with BytesIO() as f:

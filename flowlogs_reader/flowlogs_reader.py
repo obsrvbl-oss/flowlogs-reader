@@ -57,13 +57,13 @@ class FlowRecord:
         'end',
         'action',
         'log_status',
-        # 'vpc_id',
-        # 'subnet_id',
-        # 'instance_id',
-        # 'tcp_flags',
-        # 'type',
-        # 'pkt_srcaddr',
-        # 'pkt_dstaddr',
+        'vpc_id',
+        'subnet_id',
+        'instance_id',
+        'tcp_flags',
+        'type',
+        'pkt_srcaddr',
+        'pkt_dstaddr',
     ]
 
     def __init__(self, event_data, EPOCH_32_MAX=2147483647):
@@ -86,10 +86,10 @@ class FlowRecord:
         else:
             self.end = None
 
-        for field, func in (
+        for key, func in (
             ('version', int),
-            ('account-id', str),
-            ('interface-id', str),
+            ('account_id', str),
+            ('interface_id', str),
             ('srcaddr', str),
             ('dstaddr', str),
             ('srcport', int),
@@ -98,10 +98,16 @@ class FlowRecord:
             ('packets', int),
             ('bytes', int),
             ('action', str),
-            ('log-status', str),
+            ('log_status', str),
+            ('vpc_id', str),
+            ('subnet_id', str),
+            ('instance_id', str),
+            ('tcp_flags', str),
+            ('type', str),
+            ('pkt_srcaddr', str),
+            ('pkt_dstaddr', str),
         ):
-            key = field.replace('-', '_')
-            value = event_data.get(field, '-')
+            value = event_data.get(key, '-')
             value = None if (value == '-') else func(value)
             setattr(self, key, value)
 
@@ -117,11 +123,21 @@ class FlowRecord:
         return hash(tuple(getattr(self, x) for x in self.__slots__))
 
     def __str__(self):
-        ret = ['{}: {}'.format(x, getattr(self, x)) for x in self.__slots__]
+        ret = []
+        for key in self.__slots__:
+            value = getattr(self, key)
+            if value is not None:
+                ret.append('{}: {}'.format(key, value))
         return ', '.join(ret)
 
     def to_dict(self):
-        return {x: getattr(self, x) for x in self.__slots__}
+        ret = {}
+        for key in self.__slots__:
+            value = getattr(self, key)
+            if value is not None:
+                ret[key] = value
+
+        return ret
 
     def to_message(self):
         D_transform = {
@@ -142,7 +158,6 @@ class FlowRecord:
 
         event_data = {}
         for key, value in zip(cls.__slots__, fields):
-            key = key.replace('_', '-')
             event_data[key] = value
 
         return cls(event_data)
@@ -283,7 +298,11 @@ class S3FlowLogsReader(BaseReader):
     def _read_file(self, key):
         resp = self.boto_client.get_object(Bucket=self.bucket, Key=key)
         with gz_open(resp['Body'], mode='rt') as gz_f:
-            yield from DictReader(gz_f, delimiter=' ')
+            reader = DictReader(gz_f, delimiter=' ')
+            reader.fieldnames = [
+                f.replace('-', '_') for f in reader.fieldnames
+            ]
+            yield from reader
 
     def _get_keys(self, prefix):
         # S3 keys have a file name like:
