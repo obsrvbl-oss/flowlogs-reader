@@ -216,7 +216,7 @@ class FlowLogsReader(BaseReader):
     def __init__(
         self, log_group_name, filter_pattern=DEFAULT_FILTER_PATTERN, **kwargs
     ):
-        super(FlowLogsReader, self).__init__('logs', **kwargs)
+        super().__init__('logs', **kwargs)
         self.log_group_name = log_group_name
 
         self.paginator_kwargs = {}
@@ -256,7 +256,7 @@ class S3FlowLogsReader(BaseReader):
         include_regions=None,
         **kwargs
     ):
-        super(S3FlowLogsReader, self).__init__('s3', **kwargs)
+        super().__init__('s3', **kwargs)
 
         location_parts = (location.rstrip('/') + '/').split('/', 1)
         self.bucket, self.prefix = location_parts
