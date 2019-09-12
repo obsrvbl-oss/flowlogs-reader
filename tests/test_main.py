@@ -59,7 +59,9 @@ SAMPLE_INPUT = [
         '1431280876 1431280934 - SKIPDATA'
     ),
 ]
-SAMPLE_RECORDS = [FlowRecord.from_message(m) for m in SAMPLE_INPUT]
+SAMPLE_RECORDS = [
+    FlowRecord.from_cwl_event({'message': m}) for m in SAMPLE_INPUT
+]
 
 
 class MainTestCase(TestCase):

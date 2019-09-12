@@ -65,7 +65,7 @@ SAMPLE_RECORDS = [
 
 class FlowRecordTestCase(TestCase):
     def test_parse(self):
-        flow_record = FlowRecord({'message': SAMPLE_RECORDS[0]})
+        flow_record = FlowRecord.from_cwl_event({'message': SAMPLE_RECORDS[0]})
         actual = {x: getattr(flow_record, x) for x in FlowRecord.__slots__}
         expected = {
             'account_id': '123456789010',
@@ -86,9 +86,13 @@ class FlowRecordTestCase(TestCase):
         self.assertEqual(actual, expected)
 
     def test_eq(self):
-        flow_record = FlowRecord({'message': SAMPLE_RECORDS[0]})
-        equal_record = FlowRecord({'message': SAMPLE_RECORDS[0]})
-        unequal_record = FlowRecord({'message': SAMPLE_RECORDS[1]})
+        flow_record = FlowRecord.from_cwl_event({'message': SAMPLE_RECORDS[0]})
+        equal_record = FlowRecord.from_cwl_event(
+            {'message': SAMPLE_RECORDS[0]}
+        )
+        unequal_record = FlowRecord.from_cwl_event(
+            {'message': SAMPLE_RECORDS[1]}
+        )
 
         self.assertEqual(flow_record, equal_record)
         self.assertNotEqual(flow_record, unequal_record)
@@ -96,17 +100,17 @@ class FlowRecordTestCase(TestCase):
 
     def test_hash(self):
         record_set = {
-            FlowRecord.from_message(SAMPLE_RECORDS[0]),
-            FlowRecord.from_message(SAMPLE_RECORDS[0]),
-            FlowRecord.from_message(SAMPLE_RECORDS[1]),
-            FlowRecord.from_message(SAMPLE_RECORDS[1]),
-            FlowRecord.from_message(SAMPLE_RECORDS[2]),
-            FlowRecord.from_message(SAMPLE_RECORDS[2]),
+            FlowRecord.from_cwl_event({'message': SAMPLE_RECORDS[0]}),
+            FlowRecord.from_cwl_event({'message': SAMPLE_RECORDS[0]}),
+            FlowRecord.from_cwl_event({'message': SAMPLE_RECORDS[1]}),
+            FlowRecord.from_cwl_event({'message': SAMPLE_RECORDS[1]}),
+            FlowRecord.from_cwl_event({'message': SAMPLE_RECORDS[2]}),
+            FlowRecord.from_cwl_event({'message': SAMPLE_RECORDS[2]}),
         }
         self.assertEqual(len(record_set), 3)
 
     def test_str(self):
-        flow_record = FlowRecord({'message': SAMPLE_RECORDS[0]})
+        flow_record = FlowRecord.from_cwl_event({'message': SAMPLE_RECORDS[0]})
         actual = str(flow_record)
         expected = (
             'version: 2, account_id: 123456789010, '
@@ -118,7 +122,7 @@ class FlowRecordTestCase(TestCase):
         self.assertEqual(actual, expected)
 
     def test_to_dict(self):
-        flow_record = FlowRecord({'message': SAMPLE_RECORDS[2]})
+        flow_record = FlowRecord.from_cwl_event({'message': SAMPLE_RECORDS[2]})
         actual = flow_record.to_dict()
         expected = {
             'account_id': '123456789010',
@@ -144,19 +148,9 @@ class FlowRecordTestCase(TestCase):
             '2 123456789010 eni-4b118871 - - - - - - - '
             '1512564058000 1512564059000 - SKIPDATA'
         )
-        flow_record = FlowRecord({'message': record})
+        flow_record = FlowRecord.from_cwl_event({'message': record})
         self.assertEqual(flow_record.start, datetime(2017, 12, 6, 12, 40, 58))
         self.assertEqual(flow_record.end, datetime(2017, 12, 6, 12, 40, 59))
-
-    def test_to_message(self):
-        for message in SAMPLE_RECORDS:
-            message_record = FlowRecord.from_message(message)
-            self.assertEqual(message_record.to_message(), message)
-
-    def test_from_message(self):
-        event_record = FlowRecord({'message': SAMPLE_RECORDS[1]})
-        message_record = FlowRecord.from_message(SAMPLE_RECORDS[1])
-        self.assertEqual(event_record, message_record)
 
 
 class FlowLogsReaderTestCase(TestCase):
@@ -261,7 +255,9 @@ class FlowLogsReaderTestCase(TestCase):
 
         # Calling list on the instance causes it to iterate through all records
         actual = [next(self.inst)] + list(self.inst)
-        expected = [FlowRecord.from_message(x) for x in SAMPLE_RECORDS]
+        expected = [
+            FlowRecord.from_cwl_event({'message': x}) for x in SAMPLE_RECORDS
+        ]
         self.assertEqual(actual, expected)
 
     def test_iteration_error(self):
@@ -281,7 +277,8 @@ class FlowLogsReaderTestCase(TestCase):
 
         # Don't fail if botocore's paginator raises a PaginationError
         actual = [next(self.inst)] + list(self.inst)
-        expected = [FlowRecord.from_message(x) for x in SAMPLE_RECORDS[:2]]
+        records = SAMPLE_RECORDS[:2]
+        expected = [FlowRecord.from_cwl_event({'message': x}) for x in records]
         self.assertEqual(actual, expected)
 
     def test_iteration_unexpecetd_error(self):
@@ -391,7 +388,8 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'list_objects_v2', list_response, list_params
             )
             # Get object call
-            header = ' '.join(FlowRecord.__slots__)
+            fields = [key.replace('_', '-') for key in FlowRecord.__slots__]
+            header = ' '.join(fields)
             text = '\n'.join([header] + SAMPLE_RECORDS)
             with BytesIO() as f:
                 with gz_open(f, mode='wb') as gz_f:
@@ -427,20 +425,23 @@ class S3FlowLogsReaderTestCase(TestCase):
                 boto_client=boto_client,
             )
             actual = list(reader)
-            expected = [FlowRecord.from_message(x) for x in SAMPLE_RECORDS]
+            records = SAMPLE_RECORDS[:]
+            expected = [
+                FlowRecord.from_cwl_event({'message': x}) for x in records
+            ]
             self.assertEqual(actual, expected)
 
 
 class AggregationTestCase(TestCase):
     def test_aggregated_records(self):
         # Aggregate by 5-tuple by default
-        messages = [
-            SAMPLE_RECORDS[0],
-            SAMPLE_RECORDS[1],
-            SAMPLE_RECORDS[2].replace('REJECT', 'ACCEPT'),
-            SAMPLE_RECORDS[3],
+        events = [
+            {'message': SAMPLE_RECORDS[0]},
+            {'message': SAMPLE_RECORDS[1]},
+            {'message': SAMPLE_RECORDS[2].replace('REJECT', 'ACCEPT')},
+            {'message': SAMPLE_RECORDS[3]},
         ]
-        all_records = (FlowRecord.from_message(x) for x in messages)
+        all_records = (FlowRecord.from_cwl_event(x) for x in events)
         results = aggregated_records(all_records)
 
         actual = sorted(results, key=lambda x: x['srcaddr'])
@@ -472,11 +473,11 @@ class AggregationTestCase(TestCase):
 
     def test_aggregated_records_custom(self):
         # Aggregate by interface_id
-        messages = [
-            SAMPLE_RECORDS[1],
-            SAMPLE_RECORDS[2].replace('REJECT', 'ACCEPT'),
+        events = [
+            {'message': SAMPLE_RECORDS[1]},
+            {'message': SAMPLE_RECORDS[2].replace('REJECT', 'ACCEPT')},
         ]
-        all_records = (FlowRecord.from_message(x) for x in messages)
+        all_records = (FlowRecord.from_cwl_event(x) for x in events)
         key_fields = ('interface_id', 'srcaddr', 'srcport', 'dstport')
         results = aggregated_records(all_records, key_fields=key_fields)
 
