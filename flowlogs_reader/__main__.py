@@ -142,8 +142,8 @@ def get_reader(args):
             'aws_session_token': resp['Credentials']['SessionToken'],
         }
         session = boto3.session.Session(**session_kwargs)
-        logs_client = session.client(client_type)
-        kwargs['boto_client'] = logs_client
+        boto_client = session.client(client_type)
+        kwargs['boto_client'] = boto_client
 
     return cls(args.location, **kwargs)
 
