@@ -11,27 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from __future__ import print_function
-
 import io
+
 from datetime import datetime
+from itertools import zip_longest
+from io import StringIO
 from unittest import TestCase
-
-try:
-    from itertools import zip_longest
-except ImportError:
-    from itertools import izip_longest as zip_longest
-
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
-
-try:
-    from unittest.mock import MagicMock, patch
-except ImportError:
-    from mock import MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 from flowlogs_reader import FlowRecord
 from flowlogs_reader.__main__ import main, actions
@@ -40,26 +26,33 @@ from flowlogs_reader.__main__ import main, actions
 SAMPLE_INPUT = [
     (
         '2 123456789010 eni-102010ab 198.51.100.1 192.0.2.1 '
-        '443 49152 6 10 840 1439387263 1439387264 ACCEPT OK'
+        '443 49152 6 10 840 1439387263 1439387264 ACCEPT OK '
+        '- - - - - - -'
     ),
     (
         '2 123456789010 eni-102010ab 192.0.2.1 198.51.100.1 '
-        '49152 443 6 20 1680 1439387264 1439387265 ACCEPT OK'
+        '49152 443 6 20 1680 1439387264 1439387265 ACCEPT OK '
+        '- - - - - - -'
     ),
     (
         '2 123456789010 eni-102010ab 192.0.2.1 198.51.100.2 '
-        '49152 443 6 20 1680 1439387265 1439387266 REJECT OK'
+        '49152 443 6 20 1680 1439387265 1439387266 REJECT OK '
+        '- - - - - - -'
     ),
     (
         '2 123456789010 eni-1a2b3c4d - - - - - - - '
-        '1431280876 1431280934 - NODATA'
+        '1431280876 1431280934 - NODATA '
+        '- - - - - - -'
     ),
     (
         '2 123456789010 eni-4b118871 - - - - - - - '
-        '1431280876 1431280934 - SKIPDATA'
+        '1431280876 1431280934 - SKIPDATA '
+        '- - - - - - -'
     ),
 ]
-SAMPLE_RECORDS = [FlowRecord.from_message(m) for m in SAMPLE_INPUT]
+SAMPLE_RECORDS = [
+    FlowRecord.from_cwl_event({'message': m}) for m in SAMPLE_INPUT
+]
 
 
 class MainTestCase(TestCase):

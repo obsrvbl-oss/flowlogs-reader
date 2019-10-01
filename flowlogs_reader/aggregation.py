@@ -11,16 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from __future__ import print_function
-
 from collections import defaultdict
 from datetime import datetime
 
 KEY_FIELDS = ('srcaddr', 'dstaddr', 'srcport', 'dstport', 'protocol')
 
 
-class _FlowStats(object):
+class _FlowStats:
     """
     An aggregator for flow records. Sums bytes and packets and keeps track of
     the active time window.

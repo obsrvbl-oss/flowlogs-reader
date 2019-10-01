@@ -12,8 +12,9 @@ This project contains:
 * A Python library for retrieving and working with VPC Flow logs
 
 The tools support reading Flow Logs from both [CloudWatch Logs](https://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs-cwl.html) and [S3](https://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs-s3.html).
+For S3 destinations, [version 3](https://aws.amazon.com/blogs/aws/learn-from-your-vpc-flow-logs-with-additional-meta-data/) custom log formats are supported.
 
-The library builds on [boto3](https://github.com/boto/boto3) and should work on both Python 2.7 and 3.4+.
+The library builds on [boto3](https://github.com/boto/boto3) and should work on Python 3.4+.
 
 For information on VPC Flow Logs and how to enable them see [this post](https://aws.amazon.com/blogs/aws/vpc-flow-logs-log-and-view-network-traffic-flows/) at the AWS blog.
 You may use this library with the [kinesis-logs-reader](https://github.com/obsrvbl/kinesis-logs-reader) library when retrieving VPC flow logs from Amazon Kinesis.
@@ -57,7 +58,7 @@ The default action is to `print` flows. You may also specify the `ipset`, `findi
 * `flowlogs_reader location print 10` - print the first 10 flows from the past hour
 * `flowlogs_reader location ipset` - print the unique IPs seen in the past hour
 * `flowlogs_reader location findip 198.51.100.2` - print all flows involving 198.51.100.2
-* `flowlogs_reader location aggregate` - aggregate the flows by 5-tuple, then print them as a tab-separated stream (with a header)
+* `flowlogs_reader location aggregate` - aggregate the flows by 5-tuple, then print them as a tab-separated stream (with a header). This requires that each of the fields in the 5-tuple are present in the data format.
 
 You may combine the output of `flowlogs_reader` with other command line utilities:
 

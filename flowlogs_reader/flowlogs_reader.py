@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division, print_function
-
 from calendar import timegm
+from csv import DictReader
 from datetime import datetime, timedelta
-from gzip import GzipFile
-from io import BytesIO
+from gzip import open as gz_open
 from os.path import basename
 
 import boto3
@@ -38,7 +36,7 @@ SKIPDATA = 'SKIPDATA'
 NODATA = 'NODATA'
 
 
-class FlowRecord(object):
+class FlowRecord:
     """
     Given a VPC Flow Logs event dictionary, returns a Python object whose
     attributes match the field names in the event record. Integers are stored
@@ -59,47 +57,59 @@ class FlowRecord(object):
         'end',
         'action',
         'log_status',
+        'vpc_id',
+        'subnet_id',
+        'instance_id',
+        'tcp_flags',
+        'type',
+        'pkt_srcaddr',
+        'pkt_dstaddr',
     ]
 
-    def __init__(self, event, EPOCH_32_MAX=2147483647):
-        fields = event['message'].split()
-        self.version = int(fields[0])
-        self.account_id = fields[1]
-        self.interface_id = fields[2]
-
+    def __init__(self, event_data, EPOCH_32_MAX=2147483647):
         # Contra the docs, the start and end fields can contain
         # millisecond-based timestamps.
         # http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html
-        start = int(fields[10])
-        if start > EPOCH_32_MAX:
-            start /= 1000
-
-        end = int(fields[11])
-        if end > EPOCH_32_MAX:
-            end /= 1000
-
-        self.start = datetime.utcfromtimestamp(start)
-        self.end = datetime.utcfromtimestamp(end)
-
-        self.log_status = fields[13]
-        if self.log_status in (NODATA, SKIPDATA):
-            self.srcaddr = None
-            self.dstaddr = None
-            self.srcport = None
-            self.dstport = None
-            self.protocol = None
-            self.packets = None
-            self.bytes = None
-            self.action = None
+        if 'start' in event_data:
+            start = int(event_data['start'])
+            if start > EPOCH_32_MAX:
+                start /= 1000
+            self.start = datetime.utcfromtimestamp(start)
         else:
-            self.srcaddr = fields[3]
-            self.dstaddr = fields[4]
-            self.srcport = int(fields[5])
-            self.dstport = int(fields[6])
-            self.protocol = int(fields[7])
-            self.packets = int(fields[8])
-            self.bytes = int(fields[9])
-            self.action = fields[12]
+            self.start = None
+
+        if 'end' in event_data:
+            end = int(event_data['end'])
+            if end > EPOCH_32_MAX:
+                end /= 1000
+            self.end = datetime.utcfromtimestamp(end)
+        else:
+            self.end = None
+
+        for key, func in (
+            ('version', int),
+            ('account_id', str),
+            ('interface_id', str),
+            ('srcaddr', str),
+            ('dstaddr', str),
+            ('srcport', int),
+            ('dstport', int),
+            ('protocol', int),
+            ('packets', int),
+            ('bytes', int),
+            ('action', str),
+            ('log_status', str),
+            ('vpc_id', str),
+            ('subnet_id', str),
+            ('instance_id', str),
+            ('tcp_flags', int),
+            ('type', str),
+            ('pkt_srcaddr', str),
+            ('pkt_dstaddr', str),
+        ):
+            value = event_data.get(key, '-')
+            value = None if (value == '-') else func(value)
+            setattr(self, key, value)
 
     def __eq__(self, other):
         try:
@@ -113,11 +123,21 @@ class FlowRecord(object):
         return hash(tuple(getattr(self, x) for x in self.__slots__))
 
     def __str__(self):
-        ret = ['{}: {}'.format(x, getattr(self, x)) for x in self.__slots__]
+        ret = []
+        for key in self.__slots__:
+            value = getattr(self, key)
+            if value is not None:
+                ret.append('{}: {}'.format(key, value))
         return ', '.join(ret)
 
     def to_dict(self):
-        return {x: getattr(self, x) for x in self.__slots__}
+        ret = {}
+        for key in self.__slots__:
+            value = getattr(self, key)
+            if value is not None:
+                ret[key] = value
+
+        return ret
 
     def to_message(self):
         D_transform = {
@@ -133,11 +153,17 @@ class FlowRecord(object):
         return ' '.join(ret)
 
     @classmethod
-    def from_message(cls, message):
-        return cls({'message': message})
+    def from_cwl_event(cls, cwl_event):
+        fields = cwl_event['message'].split()
+
+        event_data = {}
+        for key, value in zip(cls.__slots__, fields):
+            event_data[key] = value
+
+        return cls(event_data)
 
 
-class BaseReader(object):
+class BaseReader:
     def __init__(
         self,
         client_type,
@@ -192,16 +218,6 @@ class BaseReader(object):
     def __next__(self):
         return next(self.iterator)
 
-    def next(self):
-        # For Python 2 compatibility
-        return self.__next__()
-
-    def _reader(self):
-        # Loops through each log stream and its events, yielding a parsed
-        # version of each event.
-        for event in self._read_streams():
-            yield FlowRecord(event)
-
 
 class FlowLogsReader(BaseReader):
     """
@@ -223,7 +239,7 @@ class FlowLogsReader(BaseReader):
     def __init__(
         self, log_group_name, filter_pattern=DEFAULT_FILTER_PATTERN, **kwargs
     ):
-        super(FlowLogsReader, self).__init__('logs', **kwargs)
+        super().__init__('logs', **kwargs)
         self.log_group_name = log_group_name
 
         self.paginator_kwargs = {}
@@ -254,6 +270,10 @@ class FlowLogsReader(BaseReader):
             else:
                 raise
 
+    def _reader(self):
+        for event in self._read_streams():
+            yield FlowRecord.from_cwl_event(event)
+
 
 class S3FlowLogsReader(BaseReader):
     def __init__(
@@ -263,7 +283,7 @@ class S3FlowLogsReader(BaseReader):
         include_regions=None,
         **kwargs
     ):
-        super(S3FlowLogsReader, self).__init__('s3', **kwargs)
+        super().__init__('s3', **kwargs)
 
         location_parts = (location.rstrip('/') + '/').split('/', 1)
         self.bucket, self.prefix = location_parts
@@ -277,14 +297,12 @@ class S3FlowLogsReader(BaseReader):
 
     def _read_file(self, key):
         resp = self.boto_client.get_object(Bucket=self.bucket, Key=key)
-        with BytesIO(resp['Body'].read()) as f:
-            with GzipFile(fileobj=f, mode='rb') as gz_f:
-                # Skip the header
-                next(gz_f)
-
-                # Yield the rest of the lines
-                for line in gz_f:
-                    yield line.decode('utf-8')
+        with gz_open(resp['Body'], mode='rt') as gz_f:
+            reader = DictReader(gz_f, delimiter=' ')
+            reader.fieldnames = [
+                f.replace('-', '_') for f in reader.fieldnames
+            ]
+            yield from reader
 
     def _get_keys(self, prefix):
         # S3 keys have a file name like:
@@ -360,5 +378,8 @@ class S3FlowLogsReader(BaseReader):
                 for day_prefix in self._get_date_prefixes():
                     prefix = region_prefix + day_prefix
                     for key in self._get_keys(prefix):
-                        for message in self._read_file(key):
-                            yield {'message': message}
+                        yield from self._read_file(key)
+
+    def _reader(self):
+        for event_data in self._read_streams():
+            yield FlowRecord(event_data)

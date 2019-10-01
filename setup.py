@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 from setuptools import setup, find_packages
 
-PY2 = sys.version_info[0] == 2
 
 setup(
     name='flowlogs_reader',
-    version='1.1.1',
+    version='2.0.0',
     license='Apache',
     url='https://github.com/obsrvbl/flowlogs-reader',
 
@@ -37,7 +35,6 @@ setup(
         'Intended Audience :: Information Technology',
         'Intended Audience :: System Administrators',
         'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
     ],
     entry_points={
@@ -47,6 +44,7 @@ setup(
     },
 
     packages=find_packages(exclude=[]),
+    python_requires='>=3.4',
     test_suite='tests',
 
     install_requires=[
@@ -54,5 +52,4 @@ setup(
         'botocore>=1.10.75',
         'python-dateutil>=2.7.0'
     ],
-    tests_require=['mock'] if PY2 else [],
 )
