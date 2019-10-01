@@ -127,8 +127,6 @@ And turns it into a Python object like this:
  'version': 2}
 ```
 
-You may use the `FlowRecord.from_message(...)` constructor if you have a line of log text instead of an event dictionary.
-
 `FlowLogsReader` reads from CloudWatch Logs. It takes the name of a log group and can then yield all the Flow Log records from that group.
 
 ```python
