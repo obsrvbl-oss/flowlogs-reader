@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 from setuptools import setup, find_packages
 
-PY2 = sys.version_info[0] == 2
 
 setup(
     name='flowlogs_reader',
@@ -54,5 +52,4 @@ setup(
         'botocore>=1.10.75',
         'python-dateutil>=2.7.0'
     ],
-    tests_require=['mock'] if PY2 else [],
 )
