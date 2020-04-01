@@ -124,6 +124,9 @@ def get_reader(args):
             x.strip() for x in args.include_regions.split(',')
         ]
 
+    if args.thread_count:
+        kwargs['thread_count'] = args.thread_count
+
     # Switch roles for access to another account
     if args.role_arn:
         assume_role_kwargs = {}
@@ -213,6 +216,8 @@ def main(argv=None):
                         help='assume role specified by this ARN')
     parser.add_argument('--external-id', type=str,
                         help='use this external ID for cross-account acesss')
+    parser.add_argument('--thread-count', type=int,
+                        help='number of threads used when reading flowlogs')
     args = parser.parse_args(argv)
 
     # Confirm the specified action is valid
