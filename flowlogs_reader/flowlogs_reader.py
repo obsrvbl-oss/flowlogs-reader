@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from calendar import timegm
+from concurrent.futures import ThreadPoolExecutor
 from csv import DictReader
 from datetime import datetime, timedelta
 from gzip import open as gz_open
@@ -281,6 +282,7 @@ class S3FlowLogsReader(BaseReader):
         location,
         include_accounts=None,
         include_regions=None,
+        thread_count=0,
         **kwargs
     ):
         super().__init__('s3', **kwargs)
@@ -294,6 +296,7 @@ class S3FlowLogsReader(BaseReader):
         self.include_regions = (
             None if include_regions is None else set(include_regions)
         )
+        self.thread_count = thread_count
 
     def _read_file(self, key):
         resp = self.boto_client.get_object(Bucket=self.bucket, Key=key)
@@ -372,13 +375,23 @@ class S3FlowLogsReader(BaseReader):
 
             yield prefix
 
-    def _read_streams(self):
+    def _get_all_keys(self):
         for account_prefix in self._get_account_prefixes():
             for region_prefix in self._get_region_prefixes(account_prefix):
                 for day_prefix in self._get_date_prefixes():
                     prefix = region_prefix + day_prefix
-                    for key in self._get_keys(prefix):
-                        yield from self._read_file(key)
+                    yield from self._get_keys(prefix)
+
+    def _read_streams(self):
+        all_keys = self._get_all_keys()
+        if self.thread_count:
+            with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
+                func = lambda x: list(self._read_file(x))
+                for results in executor.map(func, all_keys):
+                    yield from results
+        else:
+            for key in all_keys:
+                yield from self._read_file(key)
 
     def _reader(self):
         for event_data in self._read_streams():
