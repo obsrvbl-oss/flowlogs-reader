@@ -13,9 +13,11 @@
 # limitations under the License.
 
 from calendar import timegm
+from concurrent.futures import ThreadPoolExecutor
 from csv import DictReader
 from datetime import datetime, timedelta
 from gzip import open as gz_open
+from more_itertools import chunked
 from os.path import basename
 
 import boto3
@@ -34,6 +36,8 @@ ACCEPT = 'ACCEPT'
 REJECT = 'REJECT'
 SKIPDATA = 'SKIPDATA'
 NODATA = 'NODATA'
+
+THREAD_COUNT = 4
 
 
 class FlowRecord:
@@ -287,6 +291,7 @@ class S3FlowLogsReader(BaseReader):
 
         location_parts = (location.rstrip('/') + '/').split('/', 1)
         self.bucket, self.prefix = location_parts
+        self.thread_count = THREAD_COUNT
 
         self.include_accounts = (
             None if include_accounts is None else set(include_accounts)
@@ -302,7 +307,7 @@ class S3FlowLogsReader(BaseReader):
             reader.fieldnames = [
                 f.replace('-', '_') for f in reader.fieldnames
             ]
-            yield from reader
+            return list(reader)
 
     def _get_keys(self, prefix):
         # S3 keys have a file name like:
@@ -372,13 +377,31 @@ class S3FlowLogsReader(BaseReader):
 
             yield prefix
 
-    def _read_streams(self):
+    def _get_all_keys(self):
         for account_prefix in self._get_account_prefixes():
             for region_prefix in self._get_region_prefixes(account_prefix):
                 for day_prefix in self._get_date_prefixes():
                     prefix = region_prefix + day_prefix
                     for key in self._get_keys(prefix):
-                        yield from self._read_file(key)
+                        yield key
+
+    def _read_streams(self):
+        all_keys = self._get_all_keys()
+        if self.thread_count:
+            with ThreadPoolExecutor(self.thread_count) as executor:
+                for some_keys in chunked(all_keys, self.thread_count):
+                    jobs = []
+                    for key in some_keys:
+                        future = executor.submit(
+                            self._read_file,
+                            key,
+                        )
+                        jobs.append(future)
+                for future in jobs:
+                    yield from future.result()
+        else:
+            for key in all_keys:
+                yield from self._read_file(key)
 
     def _reader(self):
         for event_data in self._read_streams():
