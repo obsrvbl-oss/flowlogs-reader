@@ -124,7 +124,7 @@ def get_reader(args):
             x.strip() for x in args.include_regions.split(',')
         ]
 
-    if args.thread_count:
+    if args.location_type == 's3' and args.thread_count:
         kwargs['thread_count'] = args.thread_count
 
     # Switch roles for access to another account
