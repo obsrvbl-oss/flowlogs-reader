@@ -75,6 +75,12 @@ The default time window is the last hour. You may also specify a `--start-time` 
 
 Use the `--time-format` switch to control how start and end times are interpreted. The default is `'%Y-%m-%d %H:%M:%S'`. See the Python documentation for `strptime` for information on format strings.
 
+__Thread count__
+
+The default thread count is 1 (single-threaded). You may also specify `--thread_count` to have multiple threads reading flowlogs. For example
+
+* `flowlogs_reader --thread_count=4 location`
+
 __AWS options__
 
 Other command line switches:
