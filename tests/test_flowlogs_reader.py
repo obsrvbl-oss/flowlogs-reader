@@ -312,11 +312,12 @@ class S3FlowLogsReaderTestCase(TestCase):
     def setUp(self):
         self.start_time = datetime(2015, 8, 12, 12, 0, 0)
         self.end_time = datetime(2015, 8, 12, 13, 0, 0)
+        self.thread_count = 0
 
     def tearDown(self):
         pass
 
-    def test_iteration(self):
+    def _test_iteration(self):
         boto_client = boto3.client('s3')
         with Stubber(boto_client) as stubbed_client:
             # Accounts call
@@ -426,6 +427,7 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'example-bucket',
                 start_time=self.start_time,
                 end_time=self.end_time,
+                thread_count=self.thread_count,
                 include_accounts={'123456789010'},
                 include_regions={'pangaea-1'},
                 boto_client=boto_client,
@@ -474,6 +476,13 @@ class S3FlowLogsReaderTestCase(TestCase):
                 }
             ]
             self.assertEqual(actual, expected)
+
+    def test_serial(self):
+        self._test_iteration()
+
+    def test_threads(self):
+        self.thread_count = 2
+        self._test_iteration()
 
 
 class AggregationTestCase(TestCase):
