@@ -17,7 +17,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='flowlogs_reader',
-    version='2.0.0',
+    version='2.1.0',
     license='Apache',
     url='https://github.com/obsrvbl/flowlogs-reader',
 
