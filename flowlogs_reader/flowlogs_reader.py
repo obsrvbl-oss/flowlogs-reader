@@ -387,7 +387,8 @@ class S3FlowLogsReader(BaseReader):
         all_keys = self._get_all_keys()
         if self.thread_count:
             with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
-                for results in executor.map(lambda x: list(self._read_file(x)), all_keys):
+                func = lambda x: list(self._read_file(x))
+                for results in executor.map(func, all_keys):
                     yield from results
         else:
             for key in all_keys:

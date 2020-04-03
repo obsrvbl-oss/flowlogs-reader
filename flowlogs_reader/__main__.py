@@ -216,8 +216,11 @@ def main(argv=None):
                         help='assume role specified by this ARN')
     parser.add_argument('--external-id', type=str,
                         help='use this external ID for cross-account acesss')
-    parser.add_argument('--thread-count', type=int,
-                        help='number of threads used when reading flowlogs')
+    parser.add_argument(
+        '--thread-count',
+        type=int,
+        help='number of threads used when reading (S3 only)'
+    )
     args = parser.parse_args(argv)
 
     # Confirm the specified action is valid
