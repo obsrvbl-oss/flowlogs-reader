@@ -15,41 +15,4 @@
 from setuptools import setup, find_packages
 
 
-setup(
-    name='flowlogs_reader',
-    version='2.1.0',
-    license='Apache',
-    url='https://github.com/obsrvbl/flowlogs-reader',
-
-    description='Reader for AWS VPC Flow Logs',
-    long_description=(
-        'This project provides a convenient interface for accessing '
-        'VPC Flow Log data stored in Amazon CloudWatch Logs.'
-    ),
-
-    author='Observable Networks',
-    author_email='support@observable.net',
-
-    classifiers=[
-        'Intended Audience :: Developers',
-        'Intended Audience :: Information Technology',
-        'Intended Audience :: System Administrators',
-        'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python :: 3',
-    ],
-    entry_points={
-        'console_scripts': [
-            'flowlogs_reader = flowlogs_reader.__main__:main',
-        ],
-    },
-
-    packages=find_packages(exclude=[]),
-    python_requires='>=3.4',
-    test_suite='tests',
-
-    install_requires=[
-        'boto3>=1.7.75',
-        'botocore>=1.10.75',
-        'python-dateutil>=2.7.0'
-    ],
-)
+setup()

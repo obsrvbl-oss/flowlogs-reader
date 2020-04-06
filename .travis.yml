@@ -9,11 +9,7 @@ python:
     - "pypy3"
 
 install:
-    - pip install --upgrade setuptools coveralls
-    - python setup.py develop
+    - pip install tox-travis
 
 script:
-    - coverage run --source=flowlogs_reader setup.py test
-
-after_success:
-    - coveralls
+    - tox
