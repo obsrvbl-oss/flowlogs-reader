@@ -16,16 +16,12 @@ from datetime import datetime
 from gzip import compress
 from io import BytesIO
 from unittest import TestCase
+from unittest.mock import MagicMock, patch
 
 import boto3
 from botocore.exceptions import NoRegionError, PaginationError
 from botocore.response import StreamingBody
 from botocore.stub import Stubber
-
-try:
-    from unittest.mock import MagicMock, patch
-except ImportError:
-    from mock import MagicMock, patch
 
 from flowlogs_reader import (
     aggregated_records,
@@ -306,6 +302,100 @@ class FlowLogsReaderTestCase(TestCase):
 
         # Fail for unexpected PaginationError
         self.assertRaises(PaginationError, lambda: list(self.inst))
+
+    def test_threads(self):
+        inst = FlowLogsReader(
+            'group_name',
+            start_time=self.start_time,
+            end_time=self.end_time,
+            filter_pattern='REJECT',
+            boto_client=self.mock_client,
+            thread_count=1,
+        )
+
+        paginators = []
+
+        def _get_paginator(operation):
+            nonlocal paginators
+
+            paginator = MagicMock()
+            if operation == 'describe_log_streams':
+                paginator.paginate.return_value = [
+                    {
+                        'logStreams': [
+                            {
+                                'logStreamName': 'too_late',
+                                'firstEventTimestamp': inst.end_ms,
+                                'lastEventTimestamp': inst.start_ms,
+                            },
+                            {
+                                'logStreamName': 'too_late',
+                                'firstEventTimestamp': inst.end_ms - 1,
+                                'lastEventTimestamp': inst.start_ms - 1,
+                            },
+                        ],
+                    },
+                    {
+                        'logStreams': [
+                            {
+                                'logStreamName': 'first_stream',
+                                'firstEventTimestamp': inst.start_ms,
+                                'lastEventTimestamp': inst.end_ms,
+                            },
+                            {
+                                'logStreamName': 'second_stream',
+                                'firstEventTimestamp': inst.start_ms,
+                                'lastEventTimestamp': inst.end_ms,
+                            },
+                        ],
+                    },
+                ]
+            elif operation == 'filter_log_events':
+                paginator.paginate.return_value = [
+                    {
+                        'events': [
+                            {'message': V2_RECORDS[0]},
+                            {'message': V2_RECORDS[1]},
+                        ],
+                    },
+                    {
+                        'events': [
+                            {'message': V2_RECORDS[2]},
+                            {'message': V2_RECORDS[3]},
+                        ],
+                    },
+                ]
+            else:
+                self.fail('invalid operation')
+
+            paginators.append(paginator)
+            return paginator
+
+        self.mock_client.get_paginator.side_effect = _get_paginator
+        events = list(inst)
+        self.assertEqual(len(events), 8)
+
+        paginators[0].paginate.assert_called_once_with(
+            logGroupName='group_name',
+            orderBy='LastEventTime',
+            descending=True,
+        )
+        paginators[1].paginate.assert_called_once_with(
+            logGroupName='group_name',
+            startTime=inst.start_ms,
+            endTime=inst.end_ms,
+            interleaved=True,
+            filterPattern='REJECT',
+            logStreamNames=['first_stream'],
+        )
+        paginators[2].paginate.assert_called_once_with(
+            logGroupName='group_name',
+            startTime=inst.start_ms,
+            endTime=inst.end_ms,
+            interleaved=True,
+            filterPattern='REJECT',
+            logStreamNames=['second_stream'],
+        )
 
 
 class S3FlowLogsReaderTestCase(TestCase):

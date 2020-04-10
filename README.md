@@ -75,9 +75,9 @@ The default time window is the last hour. You may also specify a `--start-time` 
 
 Use the `--time-format` switch to control how start and end times are interpreted. The default is `'%Y-%m-%d %H:%M:%S'`. See the Python documentation for `strptime` for information on format strings.
 
-__Concurrent reads (S3 only)__
+__Concurrent reads__
 
-Give `--thread-count` to read from multiple S3 keys at once:
+Give `--thread-count` to read from multiple log groups or S3 keys at once:
 
 * `flowlogs_reader --thread_count=4 location`
 

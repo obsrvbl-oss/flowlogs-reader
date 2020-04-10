@@ -21,7 +21,12 @@ from uuid import uuid4
 import boto3
 
 from .aggregation import aggregated_records
-from .flowlogs_reader import FlowLogsReader, S3FlowLogsReader, SKIPDATA, NODATA
+from .flowlogs_reader import (
+    FlowLogsReader,
+    NODATA,
+    S3FlowLogsReader,
+    SKIPDATA,
+)
 
 actions = {}
 
@@ -124,7 +129,7 @@ def get_reader(args):
             x.strip() for x in args.include_regions.split(',')
         ]
 
-    if args.location_type == 's3' and args.thread_count:
+    if args.thread_count:
         kwargs['thread_count'] = args.thread_count
 
     # Switch roles for access to another account
@@ -219,7 +224,7 @@ def main(argv=None):
     parser.add_argument(
         '--thread-count',
         type=int,
-        help='number of threads used when reading (S3 only)'
+        help='number of threads used when reading'
     )
     args = parser.parse_args(argv)
 

@@ -13,8 +13,15 @@
 # limitations under the License.
 
 from .aggregation import aggregated_records
-from .flowlogs_reader import FlowRecord, FlowLogsReader, S3FlowLogsReader
+from .flowlogs_reader import (
+    FlowRecord,
+    FlowLogsReader,
+    S3FlowLogsReader,
+)
 
 __all__ = [
-    'aggregated_records', 'FlowRecord', 'FlowLogsReader', 'S3FlowLogsReader'
+    'aggregated_records',
+    'FlowRecord',
+    'FlowLogsReader',
+    'S3FlowLogsReader',
 ]

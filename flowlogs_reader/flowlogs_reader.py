@@ -238,7 +238,11 @@ class FlowLogsReader(BaseReader):
     """
 
     def __init__(
-        self, log_group_name, filter_pattern=DEFAULT_FILTER_PATTERN, **kwargs
+        self,
+        log_group_name,
+        filter_pattern=DEFAULT_FILTER_PATTERN,
+        thread_count=0,
+        **kwargs
     ):
         super().__init__('logs', **kwargs)
         self.log_group_name = log_group_name
@@ -248,23 +252,49 @@ class FlowLogsReader(BaseReader):
         if filter_pattern is not None:
             self.paginator_kwargs['filterPattern'] = filter_pattern
 
+        self.thread_count = thread_count
+
         self.start_ms = timegm(self.start_time.utctimetuple()) * 1000
         self.end_ms = timegm(self.end_time.utctimetuple()) * 1000
 
-    def _read_streams(self):
+    def _get_log_streams(self):
+        paginator = self.boto_client.get_paginator('describe_log_streams')
+        all_pages = paginator.paginate(
+            logGroupName=self.log_group_name,
+            orderBy='LastEventTime',
+            descending=True,
+        )
+        for page in all_pages:
+            for log_stream in page.get('logStreams', []):
+                # Skip streams that start after the time we care about.
+                if log_stream['firstEventTimestamp'] >= self.end_ms:
+                    continue
+
+                # Since we're ordering by last event timestamp, we're finished
+                # when we encounter a stream that ends before the time we
+                # care about.
+                if log_stream['lastEventTimestamp'] < self.start_ms:
+                    break
+
+                yield log_stream['logStreamName']
+
+    def _read_streams(self, stream_name=None):
+        kwargs = self.paginator_kwargs.copy()
+        if stream_name is not None:
+            kwargs['logStreamNames'] = [stream_name]
+
         paginator = self.boto_client.get_paginator('filter_log_events')
         response_iterator = paginator.paginate(
             logGroupName=self.log_group_name,
             startTime=self.start_ms,
             endTime=self.end_ms,
             interleaved=True,
-            **self.paginator_kwargs
+            **kwargs
         )
 
         try:
             for page in response_iterator:
-                for event in page['events']:
-                    yield event
+                yield from page['events']
         except PaginationError as e:
             if e.kwargs['message'].startswith(DUPLICATE_NEXT_TOKEN_MESSAGE):
                 pass
@@ -272,8 +302,16 @@ class FlowLogsReader(BaseReader):
                 raise
 
     def _reader(self):
-        for event in self._read_streams():
-            yield FlowRecord.from_cwl_event(event)
+        if self.thread_count:
+            all_streams = self._get_log_streams()
+            with ThreadPoolExecutor(max_workers=self.thread_count) as executor:
+                func = lambda x: list(self._read_streams(x))
+                for events in executor.map(func, all_streams):
+                    for event in events:
+                        yield FlowRecord.from_cwl_event(event)
+        else:
+            for event in self._read_streams():
+                yield FlowRecord.from_cwl_event(event)
 
 
 class S3FlowLogsReader(BaseReader):
