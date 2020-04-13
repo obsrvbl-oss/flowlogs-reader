@@ -31,6 +31,10 @@ DEFAULT_FILTER_PATTERN = (
 DEFAULT_REGION_NAME = 'us-east-1'
 DUPLICATE_NEXT_TOKEN_MESSAGE = 'The same next token was received twice'
 
+# The lastEventTimestamp may be delayed by up to an hour:
+# https://docs.aws.amazon.com/AmazonCloudWatchLogs/latest/APIReference/API_LogStream.html  # noqa
+LAST_EVENT_DELAY_MSEC = 3600000
+
 ACCEPT = 'ACCEPT'
 REJECT = 'REJECT'
 SKIPDATA = 'SKIPDATA'
@@ -273,7 +277,10 @@ class FlowLogsReader(BaseReader):
                 # Since we're ordering by last event timestamp, we're finished
                 # when we encounter a stream that ends before the time we
                 # care about.
-                if log_stream['lastEventTimestamp'] < self.start_ms:
+                last_event_ms = (
+                    log_stream['lastEventTimestamp'] + LAST_EVENT_DELAY_MSEC
+                )
+                if last_event_ms < self.start_ms:
                     break
 
                 yield log_stream['logStreamName']
