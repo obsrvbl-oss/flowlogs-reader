@@ -32,6 +32,7 @@ from flowlogs_reader import (
 from flowlogs_reader.flowlogs_reader import (
     DEFAULT_REGION_NAME,
     DUPLICATE_NEXT_TOKEN_MESSAGE,
+    LAST_EVENT_DELAY_MSEC,
 )
 
 
@@ -331,7 +332,9 @@ class FlowLogsReaderTestCase(TestCase):
                             {
                                 'logStreamName': 'too_late',
                                 'firstEventTimestamp': inst.end_ms - 1,
-                                'lastEventTimestamp': inst.start_ms - 1,
+                                'lastEventTimestamp': (
+                                    inst.start_ms - LAST_EVENT_DELAY_MSEC - 1
+                                ),
                             },
                         ],
                     },
