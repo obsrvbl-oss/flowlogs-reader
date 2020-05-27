@@ -4,7 +4,7 @@
 [![Coverage Status](https://coveralls.io/repos/obsrvbl/flowlogs-reader/badge.svg?branch=master&service=github)](https://coveralls.io/github/obsrvbl/flowlogs-reader?branch=master)
 [![PyPI Version](https://img.shields.io/pypi/v/flowlogs_reader.svg)](https://pypi.python.org/pypi/flowlogs_reader)
 
-Amazon's VPC Flow Logs are analagous to NetFlow and IPFIX logs, and can be used for security and performance analysis.
+Amazon's VPC Flow Logs are analogous to NetFlow and IPFIX logs, and can be used for security and performance analysis.
 [Observable Networks](https://observable.net) uses VPC Flow logs as an input to endpoint modeling for security monitoring.
 
 This project contains:
