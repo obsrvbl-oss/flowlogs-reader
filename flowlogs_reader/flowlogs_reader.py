@@ -69,6 +69,10 @@ class FlowRecord:
         'type',
         'pkt_srcaddr',
         'pkt_dstaddr',
+        'region',
+        'az_id',
+        'sublocation_type',
+        'sublocation_id',
     ]
 
     def __init__(self, event_data, EPOCH_32_MAX=2147483647):
@@ -111,6 +115,10 @@ class FlowRecord:
             ('type', str),
             ('pkt_srcaddr', str),
             ('pkt_dstaddr', str),
+            ('region', str),
+            ('az_id', str),
+            ('sublocation_type', str),
+            ('sublocation_id', str),
         ):
             value = event_data.get(key, '-')
             value = None if (value == '-') else func(value)
