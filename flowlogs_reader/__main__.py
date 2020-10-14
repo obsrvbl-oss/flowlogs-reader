@@ -161,70 +161,75 @@ def main(argv=None):
     parser.add_argument(
         'location',
         type=str,
-        help='CloudWatch Logs group name or S3 bucket/prefix'
+        help='CloudWatch Logs group name or S3 bucket/prefix',
     )
-    parser.add_argument('action', type=str, nargs='*', default=['print'],
-                        help='action to take on log records')
+    parser.add_argument(
+        'action',
+        type=str,
+        nargs='*',
+        default=['print'],
+        help='action to take on log records',
+    )
     # Location paramters
     parser.add_argument(
         '--location-type',
         type=str,
         help='location type (CloudWatch Logs or S3), default is cwl',
         choices=['cwl', 's3'],
-        default='cwl'
+        default='cwl',
     )
     parser.add_argument(
-        '--region',
-        type=str,
-        default='',
-        help='AWS region for the location'
+        '--region', type=str, default='', help='AWS region for the location'
     )
     # Time filter paramters
     parser.add_argument(
         '--start-time',
         '-s',
         type=str,
-        help='return records at or after this time'
+        help='return records at or after this time',
     )
     parser.add_argument(
-        '--end-time',
-        '-e',
-        type=str,
-        help='return records before this time'
+        '--end-time', '-e', type=str, help='return records before this time'
     )
-    parser.add_argument('--time-format', type=str, default='%Y-%m-%d %H:%M:%S',
-                        help='format of time to parse')
+    parser.add_argument(
+        '--time-format',
+        type=str,
+        default='%Y-%m-%d %H:%M:%S',
+        help='format of time to parse',
+    )
     # Other filtering parameters
     parser.add_argument(
         '--filter-pattern',
         type=str,
-        help='return records that match this pattern (CWL only)'
+        help='return records that match this pattern (CWL only)',
     )
     parser.add_argument(
         '--include-accounts',
         type=str,
-        help='comma-separated list of accounts to consider (S3 only)'
+        help='comma-separated list of accounts to consider (S3 only)',
     )
     parser.add_argument(
         '--include-regions',
         type=str,
-        help='comma-separated list of regions to consider (S3 only)'
+        help='comma-separated list of regions to consider (S3 only)',
     )
     # AWS paramters
     parser.add_argument(
         '--profile',
         type=str,
         default='',
-        help='boto3 configuration profile to use'
+        help='boto3 configuration profile to use',
     )
-    parser.add_argument('--role-arn', type=str,
-                        help='assume role specified by this ARN')
-    parser.add_argument('--external-id', type=str,
-                        help='use this external ID for cross-account acesss')
     parser.add_argument(
-        '--thread-count',
-        type=int,
-        help='number of threads used when reading'
+        '--role-arn', type=str, help='assume role specified by this ARN'
+    )
+    parser.add_argument(
+        '--external-id',
+        type=str,
+        help='use this external ID for cross-account acesss',
+    )
+    parser.add_argument(
+        '--thread-count', type=int, help='number of threads used when reading'
     )
     args = parser.parse_args(argv)
 

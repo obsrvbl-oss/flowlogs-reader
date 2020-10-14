@@ -47,6 +47,7 @@ class FlowRecord:
     attributes match the field names in the event record. Integers are stored
     as Python int objects; timestamps are stored as Python datetime objects.
     """
+
     __slots__ = [
         'version',
         'account_id',
@@ -69,6 +70,10 @@ class FlowRecord:
         'type',
         'pkt_srcaddr',
         'pkt_dstaddr',
+        'region',
+        'az_id',
+        'sublocation_type',
+        'sublocation_id',
     ]
 
     def __init__(self, event_data, EPOCH_32_MAX=2147483647):
@@ -111,6 +116,10 @@ class FlowRecord:
             ('type', str),
             ('pkt_srcaddr', str),
             ('pkt_dstaddr', str),
+            ('region', str),
+            ('az_id', str),
+            ('sublocation_type', str),
+            ('sublocation_id', str),
         ):
             value = event_data.get(key, '-')
             value = None if (value == '-') else func(value)
@@ -246,7 +255,7 @@ class FlowLogsReader(BaseReader):
         log_group_name,
         filter_pattern=DEFAULT_FILTER_PATTERN,
         thread_count=0,
-        **kwargs
+        **kwargs,
     ):
         super().__init__('logs', **kwargs)
         self.log_group_name = log_group_name
@@ -296,7 +305,7 @@ class FlowLogsReader(BaseReader):
             startTime=self.start_ms,
             endTime=self.end_ms,
             interleaved=True,
-            **kwargs
+            **kwargs,
         )
 
         try:
@@ -328,7 +337,7 @@ class S3FlowLogsReader(BaseReader):
         include_accounts=None,
         include_regions=None,
         thread_count=0,
-        **kwargs
+        **kwargs,
     ):
         super().__init__('s3', **kwargs)
 
@@ -392,7 +401,7 @@ class S3FlowLogsReader(BaseReader):
         resp = self.boto_client.list_objects_v2(
             Bucket=self.bucket,
             Delimiter='/',
-            Prefix=account_prefix + 'vpcflowlogs/'
+            Prefix=account_prefix + 'vpcflowlogs/',
         )
         for item in resp.get('CommonPrefixes', []):
             prefix = item['Prefix']

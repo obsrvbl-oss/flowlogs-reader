@@ -71,6 +71,19 @@ V3_FILE = (
     '3 IPv4 3 vpc-0461a061\n'
 )
 
+V4_FILE = (
+    'account-id bytes dstaddr dstport end instance-id packets '
+    'pkt-dstaddr pkt-srcaddr protocol srcaddr srcport start subnet-id '
+    'tcp-flags type version vpc-id region az-id sublocation-type '
+    'sublocation-id\n'
+    '000000000000 6392 172.18.160.93 47460 1568300425 i-06f9249b 10 '
+    '172.18.160.93 192.168.0.1 6 172.18.160.68 443 1568300367 subnet-089e7569 '
+    '19 IPv4 4 vpc-0461a061 us-east-1 use1-az4 wavelength wlid04\n'
+    '000000000000 1698 172.18.160.68 443 1568300425 i-06f9249b 10 '
+    '192.168.0.1 172.18.160.9 6 172.18.160.93 8088 1568300367 subnet-089e7569 '
+    '3 IPv4 4 vpc-0461a061 us-east-1 use1-az4 outpost outpostid04\n'
+)
+
 
 class FlowRecordTestCase(TestCase):
     def test_parse(self):
@@ -96,12 +109,8 @@ class FlowRecordTestCase(TestCase):
 
     def test_eq(self):
         flow_record = FlowRecord.from_cwl_event({'message': V2_RECORDS[0]})
-        equal_record = FlowRecord.from_cwl_event(
-            {'message': V2_RECORDS[0]}
-        )
-        unequal_record = FlowRecord.from_cwl_event(
-            {'message': V2_RECORDS[1]}
-        )
+        equal_record = FlowRecord.from_cwl_event({'message': V2_RECORDS[0]})
+        unequal_record = FlowRecord.from_cwl_event({'message': V2_RECORDS[1]})
 
         self.assertEqual(flow_record, equal_record)
         self.assertNotEqual(flow_record, unequal_record)
@@ -182,18 +191,14 @@ class FlowLogsReaderTestCase(TestCase):
 
         self.assertEqual(
             datetime.utcfromtimestamp(self.inst.start_ms // 1000),
-            self.start_time
+            self.start_time,
         )
 
         self.assertEqual(
-            datetime.utcfromtimestamp(self.inst.end_ms // 1000),
-            self.end_time
+            datetime.utcfromtimestamp(self.inst.end_ms // 1000), self.end_time
         )
 
-        self.assertEqual(
-            self.inst.paginator_kwargs['filterPattern'],
-            'REJECT'
-        )
+        self.assertEqual(self.inst.paginator_kwargs['filterPattern'], 'REJECT')
 
     @patch('flowlogs_reader.flowlogs_reader.boto3.session', autospec=True)
     def test_region_name(self, mock_session):
@@ -213,6 +218,7 @@ class FlowLogsReaderTestCase(TestCase):
         def mock_response(*args, **kwargs):
             if 'region_name' not in kwargs:
                 raise NoRegionError
+
         mock_session.Session().client.side_effect = mock_response
 
         FlowLogsReader('some_group')
@@ -233,7 +239,9 @@ class FlowLogsReaderTestCase(TestCase):
     def test_read_streams(self):
         paginator = MagicMock()
         paginator.paginate.return_value = [
-            {'events': [0]}, {'events': [1, 2]}, {'events': [3, 4, 5]},
+            {'events': [0]},
+            {'events': [1, 2]},
+            {'events': [3, 4, 5]},
         ]
 
         self.mock_client.get_paginator.return_value = paginator
@@ -410,7 +418,7 @@ class S3FlowLogsReaderTestCase(TestCase):
     def tearDown(self):
         pass
 
-    def _test_iteration(self):
+    def _test_iteration(self, data, expected):
         boto_client = boto3.client('s3')
         with Stubber(boto_client) as stubbed_client:
             # Accounts call
@@ -421,12 +429,12 @@ class S3FlowLogsReaderTestCase(TestCase):
                     {'Prefix': 'AWSLogs/123456789010/'},
                     # This one is ignored
                     {'Prefix': 'AWSLogs/123456789011/'},
-                ]
+                ],
             }
             accounts_params = {
                 'Bucket': 'example-bucket',
                 'Delimiter': '/',
-                'Prefix': 'AWSLogs/'
+                'Prefix': 'AWSLogs/',
             }
             stubbed_client.add_response(
                 'list_objects_v2', accounts_response, accounts_params
@@ -439,12 +447,12 @@ class S3FlowLogsReaderTestCase(TestCase):
                     {'Prefix': 'AWSLogs/123456789010/vpcflowlogs/pangaea-1/'},
                     # This one is ignored
                     {'Prefix': 'AWSLogs/123456789010/vpcflowlogs/pangaea-2/'},
-                ]
+                ],
             }
             regions_params = {
                 'Bucket': 'example-bucket',
                 'Delimiter': '/',
-                'Prefix': 'AWSLogs/123456789010/vpcflowlogs/'
+                'Prefix': 'AWSLogs/123456789010/vpcflowlogs/',
             }
             stubbed_client.add_response(
                 'list_objects_v2', regions_response, regions_params
@@ -482,19 +490,19 @@ class S3FlowLogsReaderTestCase(TestCase):
                             '2015/08/12/test_file.log.gz'
                         ),
                     },
-                ]
+                ],
             }
             list_params = {
                 'Bucket': 'example-bucket',
                 'Prefix': (
                     'AWSLogs/123456789010/vpcflowlogs/pangaea-1/2015/08/12/'
-                )
+                ),
             }
             stubbed_client.add_response(
                 'list_objects_v2', list_response, list_params
             )
             # Get object call
-            data = compress(V3_FILE.encode('utf-8'))
+            data = compress(data.encode('utf-8'))
 
             get_response = {
                 'ResponseMetadata': {'HTTPStatusCode': 200},
@@ -509,11 +517,9 @@ class S3FlowLogsReaderTestCase(TestCase):
                     'pangaea-1_fl-102010_'
                     '20150812T1200Z_'
                     'h45h.log.gz'
-                )
+                ),
             }
-            stubbed_client.add_response(
-                'get_object', get_response, get_params
-            )
+            stubbed_client.add_response('get_object', get_response, get_params)
             # Do the deed
             stubbed_client.activate()
             reader = S3FlowLogsReader(
@@ -526,56 +532,152 @@ class S3FlowLogsReaderTestCase(TestCase):
                 boto_client=boto_client,
             )
             actual = [record.to_dict() for record in reader]
-            expected = [
-                {
-                    'version': 3,
-                    'account_id': '000000000000',
-                    'srcaddr': '172.18.160.68',
-                    'dstaddr': '172.18.160.93',
-                    'srcport': 443,
-                    'dstport': 47460,
-                    'protocol': 6,
-                    'packets': 10,
-                    'bytes': 6392,
-                    'start': datetime(2019, 9, 12, 14, 59, 27),
-                    'end': datetime(2019, 9, 12, 15, 0, 25),
-                    'vpc_id': 'vpc-0461a061',
-                    'subnet_id': 'subnet-089e7569',
-                    'instance_id': 'i-06f9249b',
-                    'tcp_flags': 19,
-                    'type': 'IPv4',
-                    'pkt_srcaddr': '192.168.0.1',
-                    'pkt_dstaddr': '172.18.160.93'
-                },
-                {
-                    'version': 3,
-                    'account_id': '000000000000',
-                    'srcaddr': '172.18.160.93',
-                    'dstaddr': '172.18.160.68',
-                    'srcport': 8088,
-                    'dstport': 443,
-                    'protocol': 6,
-                    'packets': 10,
-                    'bytes': 1698,
-                    'start': datetime(2019, 9, 12, 14, 59, 27),
-                    'end': datetime(2019, 9, 12, 15, 0, 25),
-                    'vpc_id': 'vpc-0461a061',
-                    'subnet_id': 'subnet-089e7569',
-                    'instance_id': 'i-06f9249b',
-                    'tcp_flags': 3,
-                    'type': 'IPv4',
-                    'pkt_srcaddr': '172.18.160.9',
-                    'pkt_dstaddr': '192.168.0.1'
-                }
-            ]
             self.assertEqual(actual, expected)
 
     def test_serial(self):
-        self._test_iteration()
+        expected = [
+            {
+                'version': 3,
+                'account_id': '000000000000',
+                'srcaddr': '172.18.160.68',
+                'dstaddr': '172.18.160.93',
+                'srcport': 443,
+                'dstport': 47460,
+                'protocol': 6,
+                'packets': 10,
+                'bytes': 6392,
+                'start': datetime(2019, 9, 12, 14, 59, 27),
+                'end': datetime(2019, 9, 12, 15, 0, 25),
+                'vpc_id': 'vpc-0461a061',
+                'subnet_id': 'subnet-089e7569',
+                'instance_id': 'i-06f9249b',
+                'tcp_flags': 19,
+                'type': 'IPv4',
+                'pkt_srcaddr': '192.168.0.1',
+                'pkt_dstaddr': '172.18.160.93',
+            },
+            {
+                'version': 3,
+                'account_id': '000000000000',
+                'srcaddr': '172.18.160.93',
+                'dstaddr': '172.18.160.68',
+                'srcport': 8088,
+                'dstport': 443,
+                'protocol': 6,
+                'packets': 10,
+                'bytes': 1698,
+                'start': datetime(2019, 9, 12, 14, 59, 27),
+                'end': datetime(2019, 9, 12, 15, 0, 25),
+                'vpc_id': 'vpc-0461a061',
+                'subnet_id': 'subnet-089e7569',
+                'instance_id': 'i-06f9249b',
+                'tcp_flags': 3,
+                'type': 'IPv4',
+                'pkt_srcaddr': '172.18.160.9',
+                'pkt_dstaddr': '192.168.0.1',
+            },
+        ]
+        self._test_iteration(V3_FILE, expected)
+
+    def test_serial_v4(self):
+        expected = [
+            {
+                'version': 4,
+                'account_id': '000000000000',
+                'srcaddr': '172.18.160.68',
+                'dstaddr': '172.18.160.93',
+                'srcport': 443,
+                'dstport': 47460,
+                'protocol': 6,
+                'packets': 10,
+                'bytes': 6392,
+                'start': datetime(2019, 9, 12, 14, 59, 27),
+                'end': datetime(2019, 9, 12, 15, 0, 25),
+                'vpc_id': 'vpc-0461a061',
+                'subnet_id': 'subnet-089e7569',
+                'instance_id': 'i-06f9249b',
+                'tcp_flags': 19,
+                'type': 'IPv4',
+                'pkt_srcaddr': '192.168.0.1',
+                'pkt_dstaddr': '172.18.160.93',
+                'vpc_id': 'vpc-0461a061',
+                'region': 'us-east-1',
+                'az_id': 'use1-az4',
+                'sublocation_type': 'wavelength',
+                'sublocation_id': 'wlid04',
+            },
+            {
+                'version': 4,
+                'account_id': '000000000000',
+                'srcaddr': '172.18.160.93',
+                'dstaddr': '172.18.160.68',
+                'srcport': 8088,
+                'dstport': 443,
+                'protocol': 6,
+                'packets': 10,
+                'bytes': 1698,
+                'start': datetime(2019, 9, 12, 14, 59, 27),
+                'end': datetime(2019, 9, 12, 15, 0, 25),
+                'vpc_id': 'vpc-0461a061',
+                'subnet_id': 'subnet-089e7569',
+                'instance_id': 'i-06f9249b',
+                'tcp_flags': 3,
+                'type': 'IPv4',
+                'pkt_srcaddr': '172.18.160.9',
+                'pkt_dstaddr': '192.168.0.1',
+                'region': 'us-east-1',
+                'az_id': 'use1-az4',
+                'sublocation_type': 'outpost',
+                'sublocation_id': 'outpostid04',
+            },
+        ]
+        self._test_iteration(V4_FILE, expected)
 
     def test_threads(self):
+        expected = [
+            {
+                'version': 3,
+                'account_id': '000000000000',
+                'srcaddr': '172.18.160.68',
+                'dstaddr': '172.18.160.93',
+                'srcport': 443,
+                'dstport': 47460,
+                'protocol': 6,
+                'packets': 10,
+                'bytes': 6392,
+                'start': datetime(2019, 9, 12, 14, 59, 27),
+                'end': datetime(2019, 9, 12, 15, 0, 25),
+                'vpc_id': 'vpc-0461a061',
+                'subnet_id': 'subnet-089e7569',
+                'instance_id': 'i-06f9249b',
+                'tcp_flags': 19,
+                'type': 'IPv4',
+                'pkt_srcaddr': '192.168.0.1',
+                'pkt_dstaddr': '172.18.160.93',
+            },
+            {
+                'version': 3,
+                'account_id': '000000000000',
+                'srcaddr': '172.18.160.93',
+                'dstaddr': '172.18.160.68',
+                'srcport': 8088,
+                'dstport': 443,
+                'protocol': 6,
+                'packets': 10,
+                'bytes': 1698,
+                'start': datetime(2019, 9, 12, 14, 59, 27),
+                'end': datetime(2019, 9, 12, 15, 0, 25),
+                'vpc_id': 'vpc-0461a061',
+                'subnet_id': 'subnet-089e7569',
+                'instance_id': 'i-06f9249b',
+                'tcp_flags': 3,
+                'type': 'IPv4',
+                'pkt_srcaddr': '172.18.160.9',
+                'pkt_dstaddr': '192.168.0.1',
+            },
+        ]
         self.thread_count = 2
-        self._test_iteration()
+        self._test_iteration(V3_FILE, expected)
 
 
 class AggregationTestCase(TestCase):

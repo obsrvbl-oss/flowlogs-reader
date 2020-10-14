@@ -27,27 +27,27 @@ SAMPLE_INPUT = [
     (
         '2 123456789010 eni-102010ab 198.51.100.1 192.0.2.1 '
         '443 49152 6 10 840 1439387263 1439387264 ACCEPT OK '
-        '- - - - - - -'
+        '- - - - - - - - - - -'
     ),
     (
         '2 123456789010 eni-102010ab 192.0.2.1 198.51.100.1 '
         '49152 443 6 20 1680 1439387264 1439387265 ACCEPT OK '
-        '- - - - - - -'
+        '- - - - - - - - - - -'
     ),
     (
         '2 123456789010 eni-102010ab 192.0.2.1 198.51.100.2 '
         '49152 443 6 20 1680 1439387265 1439387266 REJECT OK '
-        '- - - - - - -'
+        '- - - - - - - - - - -'
     ),
     (
         '2 123456789010 eni-1a2b3c4d - - - - - - - '
         '1431280876 1431280934 - NODATA '
-        '- - - - - - -'
+        '- - - - - - - - - - -'
     ),
     (
         '2 123456789010 eni-4b118871 - - - - - - - '
         '1431280876 1431280934 - SKIPDATA '
-        '- - - - - - -'
+        '- - - - - - - - - - -'
     ),
 ]
 SAMPLE_RECORDS = [
@@ -63,26 +63,34 @@ class MainTestCase(TestCase):
 
         main(['-s', '2015-05-05 14:20:00', 'mygroup'])
         mock_reader.assert_called_with(
-            log_group_name='mygroup', start_time=datetime(2015, 5, 5, 14, 20),
+            log_group_name='mygroup',
+            start_time=datetime(2015, 5, 5, 14, 20),
         )
 
         main(['--end-time', '2015-05-05 14:20:00', 'mygroup'])
         mock_reader.assert_called_with(
-            log_group_name='mygroup', end_time=datetime(2015, 5, 5, 14, 20),
+            log_group_name='mygroup',
+            end_time=datetime(2015, 5, 5, 14, 20),
         )
 
-        main([
-            '--time-format', '%Y-%m-%d',
-            '--start-time', '2015-05-05',
-            'mygroup'
-        ])
+        main(
+            [
+                '--time-format',
+                '%Y-%m-%d',
+                '--start-time',
+                '2015-05-05',
+                'mygroup',
+            ]
+        )
         mock_reader.assert_called_with(
-            log_group_name='mygroup', start_time=datetime(2015, 5, 5),
+            log_group_name='mygroup',
+            start_time=datetime(2015, 5, 5),
         )
 
         main(['--region', 'us-west-1', 'mygroup'])
         mock_reader.assert_called_with(
-            log_group_name='mygroup', region_name='us-west-1',
+            log_group_name='mygroup',
+            region_name='us-west-1',
         )
 
         main(['--profile', 'my-profile', 'mygroup'])
@@ -236,10 +244,13 @@ class MainTestCase(TestCase):
         )
         mock_reader.return_value = []
         args = [
-            '--role-arn', 'myarn',
-            '--external-id', 'uuid4',
-            '--location-type', 's3',
-            'mybucket'
+            '--role-arn',
+            'myarn',
+            '--external-id',
+            'uuid4',
+            '--location-type',
+            's3',
+            'mybucket',
         ]
         main(args)
 
@@ -297,9 +308,12 @@ class MainTestCase(TestCase):
         main(
             [
                 'mybucket/myprefix',
-                '--location-type', 's3',
-                '--include-accounts', '999999999998, 999999999999',
-                '--include-regions', 'us-east-1,us-east-2',
+                '--location-type',
+                's3',
+                '--include-accounts',
+                '999999999998, 999999999999',
+                '--include-regions',
+                'us-east-1,us-east-2',
             ]
         )
         mock_reader.assert_called_once_with(
