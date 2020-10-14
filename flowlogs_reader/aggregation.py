@@ -22,6 +22,7 @@ class _FlowStats:
     An aggregator for flow records. Sums bytes and packets and keeps track of
     the active time window.
     """
+
     __slots__ = ['packets', 'bytes', 'start', 'end']
 
     def __init__(self):

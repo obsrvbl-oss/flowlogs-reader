@@ -109,12 +109,8 @@ class FlowRecordTestCase(TestCase):
 
     def test_eq(self):
         flow_record = FlowRecord.from_cwl_event({'message': V2_RECORDS[0]})
-        equal_record = FlowRecord.from_cwl_event(
-            {'message': V2_RECORDS[0]}
-        )
-        unequal_record = FlowRecord.from_cwl_event(
-            {'message': V2_RECORDS[1]}
-        )
+        equal_record = FlowRecord.from_cwl_event({'message': V2_RECORDS[0]})
+        unequal_record = FlowRecord.from_cwl_event({'message': V2_RECORDS[1]})
 
         self.assertEqual(flow_record, equal_record)
         self.assertNotEqual(flow_record, unequal_record)
@@ -195,18 +191,14 @@ class FlowLogsReaderTestCase(TestCase):
 
         self.assertEqual(
             datetime.utcfromtimestamp(self.inst.start_ms // 1000),
-            self.start_time
+            self.start_time,
         )
 
         self.assertEqual(
-            datetime.utcfromtimestamp(self.inst.end_ms // 1000),
-            self.end_time
+            datetime.utcfromtimestamp(self.inst.end_ms // 1000), self.end_time
         )
 
-        self.assertEqual(
-            self.inst.paginator_kwargs['filterPattern'],
-            'REJECT'
-        )
+        self.assertEqual(self.inst.paginator_kwargs['filterPattern'], 'REJECT')
 
     @patch('flowlogs_reader.flowlogs_reader.boto3.session', autospec=True)
     def test_region_name(self, mock_session):
@@ -226,6 +218,7 @@ class FlowLogsReaderTestCase(TestCase):
         def mock_response(*args, **kwargs):
             if 'region_name' not in kwargs:
                 raise NoRegionError
+
         mock_session.Session().client.side_effect = mock_response
 
         FlowLogsReader('some_group')
@@ -246,7 +239,9 @@ class FlowLogsReaderTestCase(TestCase):
     def test_read_streams(self):
         paginator = MagicMock()
         paginator.paginate.return_value = [
-            {'events': [0]}, {'events': [1, 2]}, {'events': [3, 4, 5]},
+            {'events': [0]},
+            {'events': [1, 2]},
+            {'events': [3, 4, 5]},
         ]
 
         self.mock_client.get_paginator.return_value = paginator
@@ -434,12 +429,12 @@ class S3FlowLogsReaderTestCase(TestCase):
                     {'Prefix': 'AWSLogs/123456789010/'},
                     # This one is ignored
                     {'Prefix': 'AWSLogs/123456789011/'},
-                ]
+                ],
             }
             accounts_params = {
                 'Bucket': 'example-bucket',
                 'Delimiter': '/',
-                'Prefix': 'AWSLogs/'
+                'Prefix': 'AWSLogs/',
             }
             stubbed_client.add_response(
                 'list_objects_v2', accounts_response, accounts_params
@@ -452,12 +447,12 @@ class S3FlowLogsReaderTestCase(TestCase):
                     {'Prefix': 'AWSLogs/123456789010/vpcflowlogs/pangaea-1/'},
                     # This one is ignored
                     {'Prefix': 'AWSLogs/123456789010/vpcflowlogs/pangaea-2/'},
-                ]
+                ],
             }
             regions_params = {
                 'Bucket': 'example-bucket',
                 'Delimiter': '/',
-                'Prefix': 'AWSLogs/123456789010/vpcflowlogs/'
+                'Prefix': 'AWSLogs/123456789010/vpcflowlogs/',
             }
             stubbed_client.add_response(
                 'list_objects_v2', regions_response, regions_params
@@ -495,13 +490,13 @@ class S3FlowLogsReaderTestCase(TestCase):
                             '2015/08/12/test_file.log.gz'
                         ),
                     },
-                ]
+                ],
             }
             list_params = {
                 'Bucket': 'example-bucket',
                 'Prefix': (
                     'AWSLogs/123456789010/vpcflowlogs/pangaea-1/2015/08/12/'
-                )
+                ),
             }
             stubbed_client.add_response(
                 'list_objects_v2', list_response, list_params
@@ -522,11 +517,9 @@ class S3FlowLogsReaderTestCase(TestCase):
                     'pangaea-1_fl-102010_'
                     '20150812T1200Z_'
                     'h45h.log.gz'
-                )
+                ),
             }
-            stubbed_client.add_response(
-                'get_object', get_response, get_params
-            )
+            stubbed_client.add_response('get_object', get_response, get_params)
             # Do the deed
             stubbed_client.activate()
             reader = S3FlowLogsReader(
@@ -561,7 +554,7 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'tcp_flags': 19,
                 'type': 'IPv4',
                 'pkt_srcaddr': '192.168.0.1',
-                'pkt_dstaddr': '172.18.160.93'
+                'pkt_dstaddr': '172.18.160.93',
             },
             {
                 'version': 3,
@@ -581,8 +574,8 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'tcp_flags': 3,
                 'type': 'IPv4',
                 'pkt_srcaddr': '172.18.160.9',
-                'pkt_dstaddr': '192.168.0.1'
-            }
+                'pkt_dstaddr': '192.168.0.1',
+            },
         ]
         self._test_iteration(V3_FILE, expected)
 
@@ -636,7 +629,7 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'az_id': 'use1-az4',
                 'sublocation_type': 'outpost',
                 'sublocation_id': 'outpostid04',
-            }
+            },
         ]
         self._test_iteration(V4_FILE, expected)
 
@@ -660,7 +653,7 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'tcp_flags': 19,
                 'type': 'IPv4',
                 'pkt_srcaddr': '192.168.0.1',
-                'pkt_dstaddr': '172.18.160.93'
+                'pkt_dstaddr': '172.18.160.93',
             },
             {
                 'version': 3,
@@ -680,8 +673,8 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'tcp_flags': 3,
                 'type': 'IPv4',
                 'pkt_srcaddr': '172.18.160.9',
-                'pkt_dstaddr': '192.168.0.1'
-            }
+                'pkt_dstaddr': '192.168.0.1',
+            },
         ]
         self.thread_count = 2
         self._test_iteration(V3_FILE, expected)
