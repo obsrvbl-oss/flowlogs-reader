@@ -170,6 +170,26 @@ class FlowRecordTestCase(TestCase):
         self.assertEqual(flow_record.start, datetime(2017, 12, 6, 12, 40, 58))
         self.assertEqual(flow_record.end, datetime(2017, 12, 6, 12, 40, 59))
 
+    def test_missing_timestamps(self):
+        event_data = {
+            'version': '3',
+            'srcaddr': '192.0.2.0',
+            'dstaddr': '198.51.100.0',
+            'bytes': '200',
+        }
+        flow_record = FlowRecord(event_data)
+        self.assertEqual(
+            flow_record.to_dict(),
+            {
+                'version': 3,
+                'srcaddr': '192.0.2.0',
+                'dstaddr': '198.51.100.0',
+                'bytes': 200,
+            },
+        )
+        self.assertIsNone(flow_record.start)
+        self.assertIsNone(flow_record.end)
+
 
 class FlowLogsReaderTestCase(TestCase):
     def setUp(self):
