@@ -22,6 +22,9 @@ jobs:
         pip install .
         pip install -U coverage flake8
     - name: Run tests
+      env:
+        AWS_ACCESS_KEY_ID: fake-access-key-id
+        AWS_SECRET_ACCESS_KEY: fake-secret-access-key
       run: |
         coverage run --include "flowlogs_reader/*.py" -m unittest
     - name: Check coverage
