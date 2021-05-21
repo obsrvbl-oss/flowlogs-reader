@@ -18,6 +18,7 @@ from csv import DictReader
 from datetime import datetime, timedelta
 from gzip import open as gz_open
 from os.path import basename
+from threading import Lock
 
 import boto3
 from botocore.exceptions import NoRegionError, PaginationError
@@ -39,6 +40,8 @@ ACCEPT = 'ACCEPT'
 REJECT = 'REJECT'
 SKIPDATA = 'SKIPDATA'
 NODATA = 'NODATA'
+
+THREAD_LOCK = Lock()
 
 
 class FlowRecord:
@@ -209,7 +212,7 @@ class BaseReader:
         self.start_time = start_time or now - timedelta(hours=1)
         self.end_time = end_time or now
 
-        # Initialize the iterator
+        self.bytes_processed = 0
         self.iterator = self._reader()
 
     def _get_client(
@@ -318,7 +321,13 @@ class FlowLogsReader(BaseReader):
 
         try:
             for page in response_iterator:
-                yield from page['events']
+                page_bytes = 0
+                for event in page.get('events', []):
+                    page_bytes += len(event['message'])
+                    yield event
+
+                with THREAD_LOCK:
+                    self.bytes_processed += page_bytes
         except PaginationError as e:
             if e.kwargs['message'].startswith(DUPLICATE_NEXT_TOKEN_MESSAGE):
                 pass
@@ -363,11 +372,14 @@ class S3FlowLogsReader(BaseReader):
     def _read_file(self, key):
         resp = self.boto_client.get_object(Bucket=self.bucket, Key=key)
         with gz_open(resp['Body'], mode='rt') as gz_f:
-            reader = DictReader(gz_f, delimiter=' ')
+            all_data = gz_f.read()
+            reader = DictReader(all_data.splitlines(), delimiter=' ')
             reader.fieldnames = [
                 f.replace('-', '_') for f in reader.fieldnames
             ]
             yield from reader
+            with THREAD_LOCK:
+                self.bytes_processed += len(all_data)
 
     def _get_keys(self, prefix):
         # S3 keys have a file name like:

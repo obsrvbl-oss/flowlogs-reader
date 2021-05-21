@@ -275,15 +275,27 @@ class FlowLogsReaderTestCase(TestCase):
     def test_read_streams(self):
         paginator = MagicMock()
         paginator.paginate.return_value = [
-            {'events': [0]},
-            {'events': [1, 2]},
-            {'events': [3, 4, 5]},
+            {
+                'events': [
+                    {'logStreamName': 'log_0', 'message': V2_RECORDS[0]},
+                    {'logStreamName': 'log_0', 'message': V2_RECORDS[1]},
+                ],
+            },
+            {
+                'events': [
+                    {'logStreamName': 'log_0', 'message': V2_RECORDS[2]},
+                    {'logStreamName': 'log_1', 'message': V2_RECORDS[3]},
+                    {'logStreamName': 'log_2', 'message': V2_RECORDS[4]},
+                ],
+            },
         ]
 
         self.mock_client.get_paginator.return_value = paginator
 
         actual = list(self.inst._read_streams())
-        expected = [0, 1, 2, 3, 4, 5]
+        expected = []
+        for page in paginator.paginate.return_value:
+            expected += page['events']
         self.assertEqual(actual, expected)
 
     def test_iteration(self):
@@ -312,6 +324,13 @@ class FlowLogsReaderTestCase(TestCase):
             FlowRecord.from_cwl_event({'message': x}) for x in V2_RECORDS
         ]
         self.assertEqual(actual, expected)
+
+        expected_bytes = 0
+        all_pages = paginator.paginate.return_value
+        expected_bytes = sum(
+            len(e['message']) for p in all_pages for e in p['events']
+        )
+        self.assertEqual(self.inst.bytes_processed, expected_bytes)
 
     def test_iteration_error(self):
         # Simulate the paginator failing
@@ -543,6 +562,7 @@ class S3FlowLogsReaderTestCase(TestCase):
             get_response = {
                 'ResponseMetadata': {'HTTPStatusCode': 200},
                 'Body': StreamingBody(BytesIO(data), len(data)),
+                'ContentLength': len(data),
             }
             get_params = {
                 'Bucket': 'example-bucket',
@@ -569,6 +589,8 @@ class S3FlowLogsReaderTestCase(TestCase):
             )
             actual = [record.to_dict() for record in reader]
             self.assertEqual(actual, expected)
+
+        return reader
 
     def test_serial(self):
         expected = [
@@ -613,7 +635,8 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'pkt_dstaddr': '192.168.0.1',
             },
         ]
-        self._test_iteration(V3_FILE, expected)
+        reader = self._test_iteration(V3_FILE, expected)
+        self.assertEqual(reader.bytes_processed, len(V3_FILE.encode()))
 
     def test_serial_v4(self):
         expected = [
@@ -667,7 +690,8 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'sublocation_id': 'outpostid04',
             },
         ]
-        self._test_iteration(V4_FILE, expected)
+        reader = self._test_iteration(V4_FILE, expected)
+        self.assertEqual(reader.bytes_processed, len(V4_FILE.encode()))
 
     def test_serial_v5(self):
         expected = [
@@ -727,7 +751,8 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'vpc_id': 'vpc-04456ab739938ee3f',
             },
         ]
-        self._test_iteration(V5_FILE, expected)
+        reader = self._test_iteration(V5_FILE, expected)
+        self.assertEqual(reader.bytes_processed, len(V5_FILE.encode()))
 
     def test_threads(self):
         expected = [
