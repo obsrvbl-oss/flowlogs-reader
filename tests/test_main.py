@@ -59,17 +59,19 @@ class MainTestCase(TestCase):
     @patch('flowlogs_reader.__main__.FlowLogsReader', autospec=True)
     def test_main(self, mock_reader):
         main(['mygroup'])
-        mock_reader.assert_called_with(log_group_name='mygroup')
+        mock_reader.assert_called_with(log_group_name='mygroup', fields=None)
 
         main(['-s', '2015-05-05 14:20:00', 'mygroup'])
         mock_reader.assert_called_with(
             log_group_name='mygroup',
+            fields=None,
             start_time=datetime(2015, 5, 5, 14, 20),
         )
 
         main(['--end-time', '2015-05-05 14:20:00', 'mygroup'])
         mock_reader.assert_called_with(
             log_group_name='mygroup',
+            fields=None,
             end_time=datetime(2015, 5, 5, 14, 20),
         )
 
@@ -84,23 +86,25 @@ class MainTestCase(TestCase):
         )
         mock_reader.assert_called_with(
             log_group_name='mygroup',
+            fields=None,
             start_time=datetime(2015, 5, 5),
         )
 
         main(['--region', 'us-west-1', 'mygroup'])
         mock_reader.assert_called_with(
             log_group_name='mygroup',
+            fields=None,
             region_name='us-west-1',
         )
 
         main(['--profile', 'my-profile', 'mygroup'])
         mock_reader.assert_called_with(
-            log_group_name='mygroup', profile_name='my-profile'
+            log_group_name='mygroup', fields=None, profile_name='my-profile'
         )
 
         main(['--filter-pattern', 'REJECT', 'mygroup'])
         mock_reader.assert_called_with(
-            log_group_name='mygroup', filter_pattern='REJECT'
+            log_group_name='mygroup', fields=None, filter_pattern='REJECT'
         )
 
     @patch('flowlogs_reader.__main__.FlowLogsReader', autospec=True)
@@ -225,7 +229,7 @@ class MainTestCase(TestCase):
         )
         session.return_value.client.assert_called_once_with('logs')
         mock_reader.assert_called_once_with(
-            log_group_name='mygroup', boto_client=mock_client
+            log_group_name='mygroup', fields=None, boto_client=mock_client
         )
 
     @patch('flowlogs_reader.__main__.S3FlowLogsReader', autospec=True)

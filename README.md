@@ -149,10 +149,8 @@ By default these classes will yield records from the last hour.
 
 You can control what's retrieved with these parameters:
 * `start_time` and `end_time` are Python `datetime.datetime` objects
-* `region_name` is a string like `'us-east-1'`. This will be used to create a [boto3 Session object](http://boto3.readthedocs.io/en/latest/reference/core/session.html#boto3.session.Session).
-* `profile_name` is a string like `'my-profile'`
-* `boto_client_kwargs` is a dictionary of parameters to pass when creating the [boto3 client](http://boto3.readthedocs.io/en/latest/reference/core/session.html#boto3.session.Session.client).
-* `boto_client` is a boto3 client object. This takes overrides `region_name`, `profile_name`, and `boto_client_kwargs`.
+* `region_name` is a string like `'us-east-1'`.
+* `boto_client` is a boto3 client object.
 
 When using `FlowLogsReader` with CloudWatch Logs:
 

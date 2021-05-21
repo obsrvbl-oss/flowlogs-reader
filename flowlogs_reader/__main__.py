@@ -100,6 +100,7 @@ def get_reader(args):
     if args.location_type == 'cwl':
         cls = FlowLogsReader
         client_type = 'logs'
+        kwargs['fields'] = None
     elif args.location_type == 's3':
         cls = S3FlowLogsReader
         client_type = 's3'
