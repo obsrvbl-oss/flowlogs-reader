@@ -117,6 +117,9 @@ def get_reader(args):
     if args.end_time:
         kwargs['end_time'] = datetime.strptime(args.end_time, time_format)
 
+    if args.location_type == 'cwl' and args.fields:
+        kwargs['fields'] = tuple(x.strip('${}') for x in args.fields.split())
+
     if args.location_type == 'cwl' and args.filter_pattern:
         kwargs['filter_pattern'] = args.filter_pattern
 
@@ -199,6 +202,11 @@ def main(argv=None):
         help='format of time to parse',
     )
     # Other filtering parameters
+    parser.add_argument(
+        '--fields',
+        type=str,
+        help='Log line format (CWL only)',
+    )
     parser.add_argument(
         '--filter-pattern',
         type=str,

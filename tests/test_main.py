@@ -102,9 +102,19 @@ class MainTestCase(TestCase):
             log_group_name='mygroup', fields=None, profile_name='my-profile'
         )
 
-        main(['--filter-pattern', 'REJECT', 'mygroup'])
+        main(
+            [
+                '--filter-pattern',
+                'REJECT',
+                '--fields',
+                '${account-id} ${action}',
+                'mygroup',
+            ]
+        )
         mock_reader.assert_called_with(
-            log_group_name='mygroup', fields=None, filter_pattern='REJECT'
+            log_group_name='mygroup',
+            fields=('account-id', 'action'),
+            filter_pattern='REJECT',
         )
 
     @patch('flowlogs_reader.__main__.FlowLogsReader', autospec=True)

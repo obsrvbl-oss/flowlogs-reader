@@ -91,6 +91,7 @@ Other command line switches:
 
 For CloudWatch Logs locations:
 
+* `flowlogs_reader --fields='${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${start} ${end} ${action} ${log-status}'` - use the given `fields` to prevent the module from querying EC2 for the log line format
 * `flowlogs_reader --filter-pattern='REJECT' location` - use the given [filter pattern](http://docs.aws.amazon.com/AmazonCloudWatch/latest/DeveloperGuide/FilterAndPatternSyntax.html) to have the server limit the output
 
 For S3 locations:
@@ -154,6 +155,7 @@ You can control what's retrieved with these parameters:
 
 When using `FlowLogsReader` with CloudWatch Logs:
 
+* The `fields` keyword is a tuple like `('version', 'account-id')`. If not supplied then the EC2 API will be queried to find out the log format.
 * The `filter_pattern` keyword is a string like `REJECT` or `443` used to filter the logs. See the examples below.
 
 When using `S3FlowLogsReader` with S3:
