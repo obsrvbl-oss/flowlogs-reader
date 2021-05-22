@@ -21,7 +21,8 @@ from os.path import basename
 from threading import Lock
 
 import boto3
-from botocore.exceptions import NoRegionError, PaginationError
+
+from botocore.exceptions import PaginationError
 from dateutil.rrule import rrule, DAILY
 
 DEFAULT_FILTER_PATTERN = (
@@ -29,7 +30,6 @@ DEFAULT_FILTER_PATTERN = (
     'srcport, dstport, protocol, packets, bytes, '
     'start, end, action, log_status]'
 )
-DEFAULT_REGION_NAME = 'us-east-1'
 DUPLICATE_NEXT_TOKEN_MESSAGE = 'The same next token was received twice'
 
 # The lastEventTimestamp may be delayed by up to an hour:
@@ -193,19 +193,15 @@ class BaseReader:
         self,
         client_type,
         region_name=None,
-        profile_name=None,
         start_time=None,
         end_time=None,
-        boto_client_kwargs=None,
         boto_client=None,
     ):
-        # Get a boto3 client with which to perform queries
         if boto_client is not None:
             self.boto_client = boto_client
         else:
-            self.boto_client = self._get_client(
-                client_type, region_name, profile_name, boto_client_kwargs
-            )
+            kwargs = {'region_name': region_name} if region_name else {}
+            self.boto_client = boto3.client(client_type, **kwargs)
 
         # If no time filters are given use the last hour
         now = datetime.utcnow()
@@ -214,28 +210,6 @@ class BaseReader:
 
         self.bytes_processed = 0
         self.iterator = self._reader()
-
-    def _get_client(
-        self, client_type, region_name, profile_name, boto_client_kwargs
-    ):
-        session_kwargs = {}
-        if region_name is not None:
-            session_kwargs['region_name'] = region_name
-
-        if profile_name is not None:
-            session_kwargs['profile_name'] = profile_name
-
-        client_kwargs = boto_client_kwargs or {}
-
-        session = boto3.session.Session(**session_kwargs)
-        try:
-            boto_client = session.client(client_type, **client_kwargs)
-        except NoRegionError:
-            boto_client = session.client(
-                client_type, region_name=DEFAULT_REGION_NAME, **client_kwargs
-            )
-
-        return boto_client
 
     def __iter__(self):
         return self

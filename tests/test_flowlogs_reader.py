@@ -30,7 +30,6 @@ from flowlogs_reader import (
     S3FlowLogsReader,
 )
 from flowlogs_reader.flowlogs_reader import (
-    DEFAULT_REGION_NAME,
     DUPLICATE_NEXT_TOKEN_MESSAGE,
     LAST_EVENT_DELAY_MSEC,
 )
@@ -236,41 +235,15 @@ class FlowLogsReaderTestCase(TestCase):
 
         self.assertEqual(self.inst.paginator_kwargs['filterPattern'], 'REJECT')
 
-    @patch('flowlogs_reader.flowlogs_reader.boto3.session', autospec=True)
-    def test_region_name(self, mock_session):
+    @patch('flowlogs_reader.flowlogs_reader.boto3.client', autospec=True)
+    def test_region_name(self, mock_client):
         # Region specified for session
         FlowLogsReader('some_group', region_name='some-region')
-        mock_session.Session.assert_called_with(region_name='some-region')
+        mock_client.assert_called_with('logs', region_name='some-region')
 
-        # Region specified for client, not for session
-        FlowLogsReader(
-            'some_group', boto_client_kwargs={'region_name': 'my-region'}
-        )
-        mock_session.Session().client.assert_called_with(
-            'logs', region_name='my-region'
-        )
-
-        # No region specified for session or client - use the default
-        def mock_response(*args, **kwargs):
-            if 'region_name' not in kwargs:
-                raise NoRegionError
-
-        mock_session.Session().client.side_effect = mock_response
-
+        # None specified
         FlowLogsReader('some_group')
-        mock_session.Session().client.assert_called_with(
-            'logs', region_name=DEFAULT_REGION_NAME
-        )
-
-    @patch('flowlogs_reader.flowlogs_reader.boto3.session', autospec=True)
-    def test_profile_name(self, mock_session):
-        # profile_name specified
-        FlowLogsReader('some_group', profile_name='my-profile')
-        mock_session.Session.assert_called_with(profile_name='my-profile')
-
-        # No profile specified
-        FlowLogsReader('some_group')
-        mock_session.Session.assert_called_with()
+        mock_client.assert_called_with('logs')
 
     def test_read_streams(self):
         paginator = MagicMock()
