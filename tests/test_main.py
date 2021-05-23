@@ -82,12 +82,15 @@ class MainTestCase(TestCase):
                 '--start-time',
                 '2015-05-05',
                 'mygroup',
+                '--thread-count',
+                '2',
             ]
         )
         mock_reader.assert_called_with(
             log_group_name='mygroup',
             fields=None,
             start_time=datetime(2015, 5, 5),
+            thread_count=2,
         )
 
         main(['--region', 'us-west-1', 'mygroup'])

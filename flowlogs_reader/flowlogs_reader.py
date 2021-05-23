@@ -266,7 +266,9 @@ class FlowLogsReader(BaseReader):
         self.thread_count = thread_count
 
         if fields is None:
-            fields = self._get_fields(self.region_name, self.log_group_name)
+            fields = self._get_fields(
+                self.region_name, self.log_group_name, ec2_client=ec2_client
+            )
         self.fields = fields
 
         self.start_ms = timegm(self.start_time.utctimetuple()) * 1000

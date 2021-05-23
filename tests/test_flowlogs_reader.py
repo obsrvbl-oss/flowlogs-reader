@@ -245,6 +245,25 @@ class FlowLogsReaderTestCase(TestCase):
         FlowLogsReader('some_group')
         mock_client.assert_called_with('logs')
 
+    @patch('flowlogs_reader.flowlogs_reader.boto3.client', autospec=True)
+    def test_get_fields(self, mock_client):
+        cwl_client = MagicMock()
+        ec2_client = mock_client.return_value
+        ec2_client.describe_flow_logs.return_value = {
+            'FlowLogs': [
+                {'LogFormat': '${srcaddr} ${dstaddr} ${start} ${end}'}
+            ]
+        }
+        reader = FlowLogsReader(
+            'some_group',
+            boto_client=cwl_client,
+            fields=None,
+        )
+        self.assertEqual(reader.fields, ('srcaddr', 'dstaddr', 'start', 'end'))
+        ec2_client.describe_flow_logs.assert_called_once_with(
+            Filters=[{'Name': 'log-group-name', 'Values': ['some_group']}]
+        )
+
     def test_read_streams(self):
         paginator = MagicMock()
         paginator.paginate.return_value = [
