@@ -376,14 +376,13 @@ class S3FlowLogsReader(BaseReader):
     def _read_file(self, key):
         resp = self.boto_client.get_object(Bucket=self.bucket, Key=key)
         with gz_open(resp['Body'], mode='rt') as gz_f:
-            all_data = gz_f.read()
-            reader = DictReader(all_data.splitlines(), delimiter=' ')
+            reader = DictReader(gz_f, delimiter=' ')
             reader.fieldnames = [
                 f.replace('-', '_') for f in reader.fieldnames
             ]
             yield from reader
             with THREAD_LOCK:
-                self.bytes_processed += len(all_data)
+                self.bytes_processed += gz_f.tell()
 
     def _get_keys(self, prefix):
         # S3 keys have a file name like:
