@@ -251,7 +251,7 @@ class FlowLogsReaderTestCase(TestCase):
         ec2_client = mock_client.return_value
         ec2_client.describe_flow_logs.return_value = {
             'FlowLogs': [
-                {'LogFormat': '${srcaddr} ${dstaddr} ${start} ${end}'}
+                {'LogFormat': '${srcaddr} ${dstaddr} ${start} ${log-status}'}
             ]
         }
         reader = FlowLogsReader(
@@ -259,7 +259,9 @@ class FlowLogsReaderTestCase(TestCase):
             boto_client=cwl_client,
             fields=None,
         )
-        self.assertEqual(reader.fields, ('srcaddr', 'dstaddr', 'start', 'end'))
+        self.assertEqual(
+            reader.fields, ('srcaddr', 'dstaddr', 'start', 'log_status')
+        )
         ec2_client.describe_flow_logs.assert_called_once_with(
             Filters=[{'Name': 'log-group-name', 'Values': ['some_group']}]
         )

@@ -269,7 +269,7 @@ class FlowLogsReader(BaseReader):
             fields = self._get_fields(
                 self.region_name, self.log_group_name, ec2_client=ec2_client
             )
-        self.fields = fields
+        self.fields = tuple(f.replace('-', '_') for f in fields)
 
         self.start_ms = timegm(self.start_time.utctimetuple()) * 1000
         self.end_ms = timegm(self.end_time.utctimetuple()) * 1000
