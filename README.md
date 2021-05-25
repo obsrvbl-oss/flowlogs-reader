@@ -91,6 +91,7 @@ Other command line switches:
 
 For CloudWatch Logs locations:
 
+* `flowlogs_reader --fields='${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${start} ${end} ${action} ${log-status}'` - use the given `fields` to prevent the module from querying EC2 for the log line format
 * `flowlogs_reader --filter-pattern='REJECT' location` - use the given [filter pattern](http://docs.aws.amazon.com/AmazonCloudWatch/latest/DeveloperGuide/FilterAndPatternSyntax.html) to have the server limit the output
 
 For S3 locations:
@@ -149,13 +150,12 @@ By default these classes will yield records from the last hour.
 
 You can control what's retrieved with these parameters:
 * `start_time` and `end_time` are Python `datetime.datetime` objects
-* `region_name` is a string like `'us-east-1'`. This will be used to create a [boto3 Session object](http://boto3.readthedocs.io/en/latest/reference/core/session.html#boto3.session.Session).
-* `profile_name` is a string like `'my-profile'`
-* `boto_client_kwargs` is a dictionary of parameters to pass when creating the [boto3 client](http://boto3.readthedocs.io/en/latest/reference/core/session.html#boto3.session.Session.client).
-* `boto_client` is a boto3 client object. This takes overrides `region_name`, `profile_name`, and `boto_client_kwargs`.
+* `region_name` is a string like `'us-east-1'`.
+* `boto_client` is a boto3 client object.
 
 When using `FlowLogsReader` with CloudWatch Logs:
 
+* The `fields` keyword is a tuple like `('version', 'account-id')`. If not supplied then the EC2 API will be queried to find out the log format.
 * The `filter_pattern` keyword is a string like `REJECT` or `443` used to filter the logs. See the examples below.
 
 When using `S3FlowLogsReader` with S3:

@@ -18,17 +18,29 @@ from csv import DictReader
 from datetime import datetime, timedelta
 from gzip import open as gz_open
 from os.path import basename
+from threading import Lock
 
 import boto3
-from botocore.exceptions import NoRegionError, PaginationError
+
+from botocore.exceptions import PaginationError
 from dateutil.rrule import rrule, DAILY
 
-DEFAULT_FILTER_PATTERN = (
-    '[version="2", account_id, interface_id, srcaddr, dstaddr, '
-    'srcport, dstport, protocol, packets, bytes, '
-    'start, end, action, log_status]'
+DEFAULT_FIELDS = (
+    'version',
+    'account_id',
+    'interface_id',
+    'srcaddr',
+    'dstaddr',
+    'srcport',
+    'dstport',
+    'protocol',
+    'packets',
+    'bytes',
+    'start',
+    'end',
+    'action',
+    'log_status',
 )
-DEFAULT_REGION_NAME = 'us-east-1'
 DUPLICATE_NEXT_TOKEN_MESSAGE = 'The same next token was received twice'
 
 # The lastEventTimestamp may be delayed by up to an hour:
@@ -39,6 +51,8 @@ ACCEPT = 'ACCEPT'
 REJECT = 'REJECT'
 SKIPDATA = 'SKIPDATA'
 NODATA = 'NODATA'
+
+THREAD_LOCK = Lock()
 
 
 class FlowRecord:
@@ -175,11 +189,11 @@ class FlowRecord:
         return ' '.join(ret)
 
     @classmethod
-    def from_cwl_event(cls, cwl_event):
-        fields = cwl_event['message'].split()
+    def from_cwl_event(cls, cwl_event, fields=DEFAULT_FIELDS):
+        data = cwl_event['message'].split()
 
         event_data = {}
-        for key, value in zip(cls.__slots__, fields):
+        for key, value in zip(fields, data):
             event_data[key] = value
 
         return cls(event_data)
@@ -190,49 +204,24 @@ class BaseReader:
         self,
         client_type,
         region_name=None,
-        profile_name=None,
         start_time=None,
         end_time=None,
-        boto_client_kwargs=None,
         boto_client=None,
     ):
-        # Get a boto3 client with which to perform queries
+        self.region_name = region_name
         if boto_client is not None:
             self.boto_client = boto_client
         else:
-            self.boto_client = self._get_client(
-                client_type, region_name, profile_name, boto_client_kwargs
-            )
+            kwargs = {'region_name': region_name} if region_name else {}
+            self.boto_client = boto3.client(client_type, **kwargs)
 
         # If no time filters are given use the last hour
         now = datetime.utcnow()
         self.start_time = start_time or now - timedelta(hours=1)
         self.end_time = end_time or now
 
-        # Initialize the iterator
+        self.bytes_processed = 0
         self.iterator = self._reader()
-
-    def _get_client(
-        self, client_type, region_name, profile_name, boto_client_kwargs
-    ):
-        session_kwargs = {}
-        if region_name is not None:
-            session_kwargs['region_name'] = region_name
-
-        if profile_name is not None:
-            session_kwargs['profile_name'] = profile_name
-
-        client_kwargs = boto_client_kwargs or {}
-
-        session = boto3.session.Session(**session_kwargs)
-        try:
-            boto_client = session.client(client_type, **client_kwargs)
-        except NoRegionError:
-            boto_client = session.client(
-                client_type, region_name=DEFAULT_REGION_NAME, **client_kwargs
-            )
-
-        return boto_client
 
     def __iter__(self):
         return self
@@ -261,22 +250,40 @@ class FlowLogsReader(BaseReader):
     def __init__(
         self,
         log_group_name,
-        filter_pattern=DEFAULT_FILTER_PATTERN,
+        filter_pattern=None,
         thread_count=0,
+        fields=DEFAULT_FIELDS,
+        ec2_client=None,
         **kwargs,
     ):
         super().__init__('logs', **kwargs)
         self.log_group_name = log_group_name
 
         self.paginator_kwargs = {}
-
         if filter_pattern is not None:
             self.paginator_kwargs['filterPattern'] = filter_pattern
 
         self.thread_count = thread_count
 
+        if fields is None:
+            fields = self._get_fields(
+                self.region_name, self.log_group_name, ec2_client=ec2_client
+            )
+        self.fields = tuple(f.replace('-', '_') for f in fields)
+
         self.start_ms = timegm(self.start_time.utctimetuple()) * 1000
         self.end_ms = timegm(self.end_time.utctimetuple()) * 1000
+
+    def _get_fields(self, region_name, log_group_name, ec2_client=None):
+        if ec2_client is None:
+            kwargs = {'region_name': region_name} if region_name else {}
+            ec2_client = boto3.client('ec2', **kwargs)
+
+        resp = ec2_client.describe_flow_logs(
+            Filters=[{'Name': 'log-group-name', 'Values': [log_group_name]}]
+        )
+        log_format = resp['FlowLogs'][0]['LogFormat']
+        return tuple(x.strip('${}') for x in log_format.split())
 
     def _get_log_streams(self):
         paginator = self.boto_client.get_paginator('describe_log_streams')
@@ -318,7 +325,13 @@ class FlowLogsReader(BaseReader):
 
         try:
             for page in response_iterator:
-                yield from page['events']
+                page_bytes = 0
+                for event in page.get('events', []):
+                    page_bytes += len(event['message'])
+                    yield event
+
+                with THREAD_LOCK:
+                    self.bytes_processed += page_bytes
         except PaginationError as e:
             if e.kwargs['message'].startswith(DUPLICATE_NEXT_TOKEN_MESSAGE):
                 pass
@@ -332,10 +345,10 @@ class FlowLogsReader(BaseReader):
                 func = lambda x: list(self._read_streams(x))
                 for events in executor.map(func, all_streams):
                     for event in events:
-                        yield FlowRecord.from_cwl_event(event)
+                        yield FlowRecord.from_cwl_event(event, self.fields)
         else:
             for event in self._read_streams():
-                yield FlowRecord.from_cwl_event(event)
+                yield FlowRecord.from_cwl_event(event, self.fields)
 
 
 class S3FlowLogsReader(BaseReader):
@@ -368,6 +381,8 @@ class S3FlowLogsReader(BaseReader):
                 f.replace('-', '_') for f in reader.fieldnames
             ]
             yield from reader
+            with THREAD_LOCK:
+                self.bytes_processed += gz_f.tell()
 
     def _get_keys(self, prefix):
         # S3 keys have a file name like:
