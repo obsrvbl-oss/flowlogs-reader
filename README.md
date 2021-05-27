@@ -12,7 +12,8 @@ This project contains:
 * A Python library for retrieving and working with VPC Flow logs
 
 The tools support reading Flow Logs from both [CloudWatch Logs](https://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs-cwl.html) and [S3](https://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs-s3.html).
-For S3 destinations, [version 3](https://aws.amazon.com/blogs/aws/learn-from-your-vpc-flow-logs-with-additional-meta-data/) custom log formats are supported.
+It can also read from local files pulled from S3.
+For S3 and file locations, [version 3](https://aws.amazon.com/blogs/aws/learn-from-your-vpc-flow-logs-with-additional-meta-data/) custom log formats are supported.
 
 The library builds on [boto3](https://github.com/boto/boto3) and should work on the [supported versions](https://devguide.python.org/#status-of-python-branches) of Python 3.
 
@@ -46,9 +47,18 @@ __Location types__
 
 `flowlogs_reader` has one required argument, `location`. By default that is interpreted as a CloudWatch Logs group.
 
-To use an S3 location, specify `--location-type='s3'`:
+To use an S3 location, specify `--location-type="s3"`:
 
-* `flowlogs_reader --location-type="s3" "bucket-name/optional-prefix"`
+```
+flowlogs_reader --location-type="s3" "bucket-name/optional-prefix"
+```
+
+To use a file location, specify `--location-type="file"`. If the location is a directory, all the `.log.gz` files in it will be read.
+
+```
+flowlogs_reader --location-type="file" "/home/sherlock/Downloads/aws_flow_logs/sample-file.log.gz"
+flowlogs_reader --location-type="file" "/home/sherlock/Downloads/aws_flow_logs/"
+```
 
 __Printing flows__
 

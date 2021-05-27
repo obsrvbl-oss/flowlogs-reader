@@ -13,8 +13,10 @@
 # limitations under the License.
 
 from datetime import datetime
-from gzip import compress
+from gzip import compress, open as gz_open
 from io import BytesIO
+from os.path import join
+from tempfile import TemporaryDirectory
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -27,6 +29,7 @@ from flowlogs_reader import (
     aggregated_records,
     FlowRecord,
     FlowLogsReader,
+    LocalFileReader,
     S3FlowLogsReader,
 )
 from flowlogs_reader.flowlogs_reader import (
@@ -98,6 +101,63 @@ V5_FILE = (
     '- 192.0.2.156 6 us-east-2 192.0.2.156 50318 1614866493 - - '
     'subnet-0123456789abcdef 7 7 IPv4 5 vpc-04456ab739938ee3f\n'
 )
+V5_DICTS = [
+    {
+        'account_id': '999999999999',
+        'action': 'ACCEPT',
+        'az_id': 'use2-az2',
+        'bytes': 4895,
+        'dstaddr': '192.0.2.156',
+        'dstport': 50318,
+        'end': datetime(2021, 3, 4, 14, 1, 51),
+        'flow_direction': 'ingress',
+        'instance_id': 'i-00123456789abcdef',
+        'interface_id': 'eni-00123456789abcdef',
+        'log_status': 'OK',
+        'packets': 15,
+        'pkt_dstaddr': '192.0.2.156',
+        'pkt_src_aws_service': 'S3',
+        'pkt_srcaddr': '198.51.100.6',
+        'protocol': 6,
+        'region': 'us-east-2',
+        'srcaddr': '198.51.100.7',
+        'srcport': 443,
+        'start': datetime(2021, 3, 4, 14, 1, 33),
+        'subnet_id': 'subnet-0123456789abcdef',
+        'tcp_flags': 19,
+        'type': 'IPv4',
+        'version': 5,
+        'vpc_id': 'vpc-04456ab739938ee3f',
+    },
+    {
+        'account_id': '999999999999',
+        'action': 'ACCEPT',
+        'az_id': 'use2-az2',
+        'bytes': 3015,
+        'dstaddr': '198.51.100.6',
+        'dstport': 443,
+        'end': datetime(2021, 3, 4, 14, 1, 51),
+        'flow_direction': 'egress',
+        'instance_id': 'i-00123456789abcdef',
+        'interface_id': 'eni-00123456789abcdef',
+        'log_status': 'OK',
+        'packets': 16,
+        'pkt_dst_aws_service': 'S3',
+        'pkt_dstaddr': '198.51.100.7',
+        'pkt_srcaddr': '192.0.2.156',
+        'protocol': 6,
+        'region': 'us-east-2',
+        'srcaddr': '192.0.2.156',
+        'srcport': 50318,
+        'start': datetime(2021, 3, 4, 14, 1, 33),
+        'subnet_id': 'subnet-0123456789abcdef',
+        'tcp_flags': 7,
+        'traffic_path': 7,
+        'type': 'IPv4',
+        'version': 5,
+        'vpc_id': 'vpc-04456ab739938ee3f',
+    },
+]
 
 
 class FlowRecordTestCase(TestCase):
@@ -688,64 +748,7 @@ class S3FlowLogsReaderTestCase(TestCase):
         self.assertEqual(reader.bytes_processed, len(V4_FILE.encode()))
 
     def test_serial_v5(self):
-        expected = [
-            {
-                'account_id': '999999999999',
-                'action': 'ACCEPT',
-                'az_id': 'use2-az2',
-                'bytes': 4895,
-                'dstaddr': '192.0.2.156',
-                'dstport': 50318,
-                'end': datetime(2021, 3, 4, 14, 1, 51),
-                'flow_direction': 'ingress',
-                'instance_id': 'i-00123456789abcdef',
-                'interface_id': 'eni-00123456789abcdef',
-                'log_status': 'OK',
-                'packets': 15,
-                'pkt_dstaddr': '192.0.2.156',
-                'pkt_src_aws_service': 'S3',
-                'pkt_srcaddr': '198.51.100.6',
-                'protocol': 6,
-                'region': 'us-east-2',
-                'srcaddr': '198.51.100.7',
-                'srcport': 443,
-                'start': datetime(2021, 3, 4, 14, 1, 33),
-                'subnet_id': 'subnet-0123456789abcdef',
-                'tcp_flags': 19,
-                'type': 'IPv4',
-                'version': 5,
-                'vpc_id': 'vpc-04456ab739938ee3f',
-            },
-            {
-                'account_id': '999999999999',
-                'action': 'ACCEPT',
-                'az_id': 'use2-az2',
-                'bytes': 3015,
-                'dstaddr': '198.51.100.6',
-                'dstport': 443,
-                'end': datetime(2021, 3, 4, 14, 1, 51),
-                'flow_direction': 'egress',
-                'instance_id': 'i-00123456789abcdef',
-                'interface_id': 'eni-00123456789abcdef',
-                'log_status': 'OK',
-                'packets': 16,
-                'pkt_dst_aws_service': 'S3',
-                'pkt_dstaddr': '198.51.100.7',
-                'pkt_srcaddr': '192.0.2.156',
-                'protocol': 6,
-                'region': 'us-east-2',
-                'srcaddr': '192.0.2.156',
-                'srcport': 50318,
-                'start': datetime(2021, 3, 4, 14, 1, 33),
-                'subnet_id': 'subnet-0123456789abcdef',
-                'tcp_flags': 7,
-                'traffic_path': 7,
-                'type': 'IPv4',
-                'version': 5,
-                'vpc_id': 'vpc-04456ab739938ee3f',
-            },
-        ]
-        reader = self._test_iteration(V5_FILE, expected)
+        reader = self._test_iteration(V5_FILE, V5_DICTS)
         self.assertEqual(reader.bytes_processed, len(V5_FILE.encode()))
 
     def test_threads(self):
@@ -793,6 +796,34 @@ class S3FlowLogsReaderTestCase(TestCase):
         ]
         self.thread_count = 2
         self._test_iteration(V3_FILE, expected)
+
+
+class LocalFileReaderTests(TestCase):
+    def setUp(self):
+        self.temp_dir = TemporaryDirectory()
+        self.first_file = join(self.temp_dir.name, 'first.log.gz')
+        self.second_file = join(self.temp_dir.name, 'second.log.gz')
+        # Ignored: wrong extension
+        self.third_file = join(self.temp_dir.name, 'third.gz')
+
+        for file_path in (self.first_file, self.second_file, self.third_file):
+            with gz_open(file_path, 'wt') as f:
+                f.write(V5_FILE)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def test_file(self):
+        reader = LocalFileReader(self.first_file)
+        actual = [x.to_dict() for x in reader]
+        self.assertEqual(actual, V5_DICTS)
+        self.assertEqual(reader.bytes_processed, len(V5_FILE.encode()))
+
+    def test_dir(self):
+        reader = LocalFileReader(self.temp_dir.name)
+        actual = [x.to_dict() for x in reader]
+        self.assertEqual(actual, V5_DICTS * 2)
+        self.assertEqual(reader.bytes_processed, len(V5_FILE.encode()) * 2)
 
 
 class AggregationTestCase(TestCase):

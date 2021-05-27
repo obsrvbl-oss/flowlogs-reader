@@ -18,6 +18,7 @@ from csv import DictReader
 from datetime import datetime, timedelta
 from gzip import open as gz_open
 from os.path import basename
+from pathlib import Path
 from threading import Lock
 
 import boto3
@@ -480,3 +481,26 @@ class S3FlowLogsReader(AWSReader):
     def _reader(self):
         for event_data in self._read_streams():
             yield FlowRecord(event_data)
+
+
+class LocalFileReader(BaseReader):
+    def __init__(self, location, **kwargs):
+        self.location = location
+        super().__init__(**kwargs)
+
+    def _read_file(self, file_path):
+        with gz_open(file_path, mode='rt') as gz_f:
+            reader = DictReader(gz_f, delimiter=' ')
+            reader.fieldnames = [
+                f.replace('-', '_') for f in reader.fieldnames
+            ]
+            yield from reader
+            with THREAD_LOCK:
+                self.bytes_processed += gz_f.tell()
+
+    def _reader(self):
+        path = Path(self.location)
+        all_files = path.glob('*.log.gz') if path.is_dir() else [path]
+        for file_path in all_files:
+            for event_data in self._read_file(file_path):
+                yield FlowRecord(event_data)
