@@ -202,19 +202,11 @@ class FlowRecord:
 class BaseReader:
     def __init__(
         self,
-        client_type,
         region_name=None,
         start_time=None,
         end_time=None,
         boto_client=None,
     ):
-        self.region_name = region_name
-        if boto_client is not None:
-            self.boto_client = boto_client
-        else:
-            kwargs = {'region_name': region_name} if region_name else {}
-            self.boto_client = boto3.client(client_type, **kwargs)
-
         # If no time filters are given use the last hour
         now = datetime.utcnow()
         self.start_time = start_time or now - timedelta(hours=1)
@@ -230,7 +222,21 @@ class BaseReader:
         return next(self.iterator)
 
 
-class FlowLogsReader(BaseReader):
+class AWSReader(BaseReader):
+    def __init__(
+        self, client_type, region_name=None, boto_client=None, **kwargs
+    ):
+        self.region_name = region_name
+        if boto_client is not None:
+            self.boto_client = boto_client
+        else:
+            client_kwargs = {'region_name': region_name} if region_name else {}
+            self.boto_client = boto3.client(client_type, **client_kwargs)
+
+        super().__init__(**kwargs)
+
+
+class FlowLogsReader(AWSReader):
     """
     Returns an object that will yield VPC Flow Log records as Python objects.
     * `log_group_name` is the name of the CloudWatch Logs group that stores
@@ -351,7 +357,7 @@ class FlowLogsReader(BaseReader):
                 yield FlowRecord.from_cwl_event(event, self.fields)
 
 
-class S3FlowLogsReader(BaseReader):
+class S3FlowLogsReader(AWSReader):
     def __init__(
         self,
         location,
