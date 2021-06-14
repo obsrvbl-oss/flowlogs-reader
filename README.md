@@ -236,3 +236,6 @@ flow_log_reader = FlowLogsReader('flowlog_group')
 key_fields = ('srcaddr', 'dstaddr')
 records = list(aggregated_records(flow_log_reader, key_fields=key_fields))
 ```
+
+The number of bytes processed after iterating is available in the `bytes_processed` attribute.
+For `S3FlowLogsReader` instances there is also a `compressed_bytes_processed` attribute.

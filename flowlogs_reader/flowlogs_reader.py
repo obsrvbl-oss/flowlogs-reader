@@ -366,6 +366,8 @@ class S3FlowLogsReader(BaseReader):
         self.bucket, self.prefix = location_parts
         self.thread_count = thread_count
 
+        self.compressed_bytes_processed = 0
+
         self.include_accounts = (
             None if include_accounts is None else set(include_accounts)
         )
@@ -383,6 +385,7 @@ class S3FlowLogsReader(BaseReader):
             yield from reader
             with THREAD_LOCK:
                 self.bytes_processed += gz_f.tell()
+                self.compressed_bytes_processed += resp['ContentLength']
 
     def _get_keys(self, prefix):
         # S3 keys have a file name like:

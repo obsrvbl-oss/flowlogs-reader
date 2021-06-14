@@ -631,6 +631,9 @@ class S3FlowLogsReaderTestCase(TestCase):
         ]
         reader = self._test_iteration(V3_FILE, expected)
         self.assertEqual(reader.bytes_processed, len(V3_FILE.encode()))
+        self.assertEqual(
+            reader.compressed_bytes_processed, len(compress(V3_FILE.encode()))
+        )
 
     def test_serial_v4(self):
         expected = [
@@ -686,6 +689,9 @@ class S3FlowLogsReaderTestCase(TestCase):
         ]
         reader = self._test_iteration(V4_FILE, expected)
         self.assertEqual(reader.bytes_processed, len(V4_FILE.encode()))
+        self.assertEqual(
+            reader.compressed_bytes_processed, len(compress(V4_FILE.encode()))
+        )
 
     def test_serial_v5(self):
         expected = [
@@ -747,6 +753,9 @@ class S3FlowLogsReaderTestCase(TestCase):
         ]
         reader = self._test_iteration(V5_FILE, expected)
         self.assertEqual(reader.bytes_processed, len(V5_FILE.encode()))
+        self.assertEqual(
+            reader.compressed_bytes_processed, len(compress(V5_FILE.encode()))
+        )
 
     def test_threads(self):
         expected = [
