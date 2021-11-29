@@ -146,7 +146,7 @@ class FlowRecord:
             ('traffic_path', int),
         ):
             value = event_data.get(key, '-')
-            value = None if (value == '-' or value == None) else func(value)
+            value = None if (value == '-' or value is None) else func(value)
             setattr(self, key, value)
 
     def __eq__(self, other):
