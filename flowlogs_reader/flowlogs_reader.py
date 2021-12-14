@@ -482,19 +482,23 @@ class S3FlowLogsReader(BaseReader):
                 yield from self._read_file(key)
 
     def _has_field(self, event_data, field):
-        return (
-            field in event_data
-            and event_data[field] is not None
-            and event_data[field] != '-'
+        return all(
+            [
+                field in event_data,
+                event_data[field] is not None,
+                event_data[field] != '-',
+            ]
         )
 
     def _has_required_fields(self, event_data):
-        return (
-            self._has_field(event_data, 'srcaddr')
-            and self._has_field(event_data, 'dstaddr')
-            and self._has_field(event_data, 'srcport')
-            and self._has_field(event_data, 'dstport')
-            and self._has_field(event_data, 'protocol')
+        return all(
+            [
+                self._has_field(event_data, 'srcaddr'),
+                self._has_field(event_data, 'dstaddr'),
+                self._has_field(event_data, 'srcport'),
+                self._has_field(event_data, 'dstport'),
+                self._has_field(event_data, 'protocol'),
+            ]
         )
 
     def _reader(self):
