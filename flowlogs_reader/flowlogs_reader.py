@@ -481,7 +481,6 @@ class S3FlowLogsReader(BaseReader):
             for key in all_keys:
                 yield from self._read_file(key)
 
-
     def _has_field(self, event_data, field):
         return (
             field in event_data
