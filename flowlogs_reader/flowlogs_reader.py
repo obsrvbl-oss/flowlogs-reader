@@ -146,7 +146,11 @@ class FlowRecord:
             ('traffic_path', int),
         ):
             value = event_data.get(key, '-')
-            value = None if (value == '-' or value is None) else func(value)
+            if value == '-' or value is None:
+                value = None
+            else:
+                value = func(value)
+
             setattr(self, key, value)
 
     def __eq__(self, other):
@@ -383,6 +387,9 @@ class S3FlowLogsReader(BaseReader):
             parquet_f = io.BytesIO(resp['Body'].read())
             reader = parquet_dict_reader(parquet_f)
             yield from reader
+            with THREAD_LOCK:
+                self.bytes_processed += parquet_f.tell()
+                self.compressed_bytes_processed += resp['ContentLength']
         else:
             with gz_open(resp['Body'], mode='rt') as gz_f:
                 reader = csv_dict_reader(gz_f, delimiter=' ')
