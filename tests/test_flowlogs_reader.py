@@ -15,6 +15,7 @@
 from datetime import datetime
 from gzip import compress
 from io import BytesIO
+import snappy
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
@@ -98,6 +99,8 @@ V5_FILE = (
     '- 192.0.2.156 6 us-east-2 192.0.2.156 50318 1614866493 - - '
     'subnet-0123456789abcdef 7 7 IPv4 5 vpc-04456ab739938ee3f\n'
 )
+
+PARQUET_FILE = 'tests/data/flows.parquet'
 
 
 class FlowRecordTestCase(TestCase):
@@ -756,6 +759,144 @@ class S3FlowLogsReaderTestCase(TestCase):
         self.assertEqual(
             reader.compressed_bytes_processed, len(compress(V5_FILE.encode()))
         )
+
+    def _test_parquet_reader(self, data, expected):
+        boto_client = boto3.client('s3')
+        with Stubber(boto_client) as stubbed_client:
+            # Accounts call
+            accounts_response = {
+                'ResponseMetadata': {'HTTPStatusCode': 200},
+                'CommonPrefixes': [
+                    # This one is used
+                    {'Prefix': 'AWSLogs/123456789010/'},
+                    # This one is ignored
+                    {'Prefix': 'AWSLogs/123456789011/'},
+                ],
+            }
+            accounts_params = {
+                'Bucket': 'example-bucket',
+                'Delimiter': '/',
+                'Prefix': 'AWSLogs/',
+            }
+            stubbed_client.add_response(
+                'list_objects_v2', accounts_response, accounts_params
+            )
+            # Regions call
+            regions_response = {
+                'ResponseMetadata': {'HTTPStatusCode': 200},
+                'CommonPrefixes': [
+                    # This one is used
+                    {'Prefix': 'AWSLogs/123456789010/vpcflowlogs/pangaea-1/'},
+                    # This one is ignored
+                    {'Prefix': 'AWSLogs/123456789010/vpcflowlogs/pangaea-2/'},
+                ],
+            }
+            regions_params = {
+                'Bucket': 'example-bucket',
+                'Delimiter': '/',
+                'Prefix': 'AWSLogs/123456789010/vpcflowlogs/',
+            }
+            stubbed_client.add_response(
+                'list_objects_v2', regions_response, regions_params
+            )
+            # List objects call
+            list_response = {
+                'ResponseMetadata': {'HTTPStatusCode': 200},
+                'Contents': [
+                    {
+                        'Key': (
+                            'AWSLogs/123456789010/vpcflowlogs/pangaea-1/'
+                            '2015/08/12/'
+                            '123456789010_vpcflowlogs_'
+                            'pangaea-1_fl-102010_'
+                            '20150812T1200Z_'
+                            'h45h.log.parquet'
+                        ),
+                    },
+                ],
+            }
+            list_params = {
+                'Bucket': 'example-bucket',
+                'Prefix': (
+                    'AWSLogs/123456789010/vpcflowlogs/pangaea-1/2015/08/12/'
+                ),
+            }
+            stubbed_client.add_response(
+                'list_objects_v2', list_response, list_params
+            )
+
+            get_response = {
+                'ResponseMetadata': {'HTTPStatusCode': 200},
+                'Body': StreamingBody(BytesIO(data), len(data)),
+                'ContentLength': len(data),
+            }
+            get_params = {
+                'Bucket': 'example-bucket',
+                'Key': (
+                    'AWSLogs/123456789010/vpcflowlogs/pangaea-1/'
+                    '2015/08/12/'
+                    '123456789010_vpcflowlogs_'
+                    'pangaea-1_fl-102010_'
+                    '20150812T1200Z_'
+                    'h45h.log.parquet'
+                ),
+            }
+            stubbed_client.add_response('get_object', get_response, get_params)
+            # Do the deed
+            stubbed_client.activate()
+            reader = S3FlowLogsReader(
+                'example-bucket',
+                start_time=self.start_time,
+                end_time=self.end_time,
+                thread_count=self.thread_count,
+                include_accounts={'123456789010'},
+                include_regions={'pangaea-1'},
+                boto_client=boto_client,
+            )
+            actual = [record.to_dict() for record in reader]
+            self.assertEqual(actual, expected)
+
+        return reader
+
+    def test_serial_parquet(self):
+        expected = [
+            {
+                'version': 2,
+                'account_id': '123456789010',
+                'interface_id': 'eni-102010ab',
+                'srcaddr': '198.51.100.1',
+                'dstaddr': '192.0.2.1',
+                'srcport': 443,
+                'dstport': 49152,
+                'protocol': 6,
+                'packets': 10,
+                'bytes': 840,
+                'start': datetime(2015, 8, 12, 13, 47, 43),
+                'end': datetime(2015, 8, 12, 13, 47, 44),
+                'action': 'ACCEPT',
+                'log_status': 'OK',
+            },
+            {
+                'version': 2,
+                'account_id': '123456789010',
+                'interface_id': 'eni-202010ab',
+                'srcaddr': '198.51.100.7',
+                'dstaddr': '192.0.2.156',
+                'srcport': 80,
+                'dstport': 100,
+                'protocol': 8080,
+                'start': datetime(2015, 8, 12, 13, 47, 43),
+                'end': datetime(2015, 8, 12, 13, 47, 44),
+                'log_status': 'NODATA',
+            }
+        ]
+        with open(PARQUET_FILE, "rb") as parquet_data:
+            data = parquet_data.read()
+            reader = self._test_parquet_reader(data, expected)
+            self.assertEqual(
+                reader.compressed_bytes_processed, len(data)
+            )
+            self.assertEqual(reader.bytes_processed, parquet_data.tell())
 
     def test_threads(self):
         expected = [

@@ -146,7 +146,7 @@ class FlowRecord:
             ('traffic_path', int),
         ):
             value = event_data.get(key, '-')
-            if value == '-' or value is None:
+            if value == '-' or value == 'None' or value is None:
                 value = None
             else:
                 value = func(value)
@@ -384,11 +384,11 @@ class S3FlowLogsReader(BaseReader):
     def _read_file(self, key):
         resp = self.boto_client.get_object(Bucket=self.bucket, Key=key)
         if key.endswith('.parquet'):
-            parquet_f = io.BytesIO(resp['Body'].read())
-            reader = parquet_dict_reader(parquet_f)
+            body = resp['Body'].read()
+            reader = parquet_dict_reader(io.BytesIO(body))
             yield from reader
             with THREAD_LOCK:
-                self.bytes_processed += parquet_f.tell()
+                self.bytes_processed += len(body)
                 self.compressed_bytes_processed += resp['ContentLength']
         else:
             with gz_open(resp['Body'], mode='rt') as gz_f:
