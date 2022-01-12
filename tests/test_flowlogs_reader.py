@@ -15,7 +15,6 @@
 from datetime import datetime
 from gzip import compress
 from io import BytesIO
-import snappy
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
