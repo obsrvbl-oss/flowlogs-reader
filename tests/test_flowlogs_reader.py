@@ -887,14 +887,12 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'start': datetime(2015, 8, 12, 13, 47, 43),
                 'end': datetime(2015, 8, 12, 13, 47, 44),
                 'log_status': 'NODATA',
-            }
+            },
         ]
         with open(PARQUET_FILE, "rb") as parquet_data:
             data = parquet_data.read()
             reader = self._test_parquet_reader(data, expected)
-            self.assertEqual(
-                reader.compressed_bytes_processed, len(data)
-            )
+            self.assertEqual(reader.compressed_bytes_processed, len(data))
             self.assertEqual(reader.bytes_processed, parquet_data.tell())
 
     def test_threads(self):
