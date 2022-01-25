@@ -14,13 +14,15 @@
 
 from calendar import timegm
 from concurrent.futures import ThreadPoolExecutor
-from csv import DictReader
+from csv import DictReader as csv_dict_reader
 from datetime import datetime, timedelta
 from gzip import open as gz_open
 from os.path import basename
+from parquet import DictReader as parquet_dict_reader
 from threading import Lock
 
 import boto3
+import io
 
 from botocore.exceptions import PaginationError
 from dateutil.rrule import rrule, DAILY
@@ -144,7 +146,11 @@ class FlowRecord:
             ('traffic_path', int),
         ):
             value = event_data.get(key, '-')
-            value = None if (value == '-') else func(value)
+            if value == '-' or value == 'None' or value is None:
+                value = None
+            else:
+                value = func(value)
+
             setattr(self, key, value)
 
     def __eq__(self, other):
@@ -377,15 +383,23 @@ class S3FlowLogsReader(BaseReader):
 
     def _read_file(self, key):
         resp = self.boto_client.get_object(Bucket=self.bucket, Key=key)
-        with gz_open(resp['Body'], mode='rt') as gz_f:
-            reader = DictReader(gz_f, delimiter=' ')
-            reader.fieldnames = [
-                f.replace('-', '_') for f in reader.fieldnames
-            ]
+        if key.endswith('.parquet'):
+            body = resp['Body'].read()
+            reader = parquet_dict_reader(io.BytesIO(body))
             yield from reader
             with THREAD_LOCK:
-                self.bytes_processed += gz_f.tell()
+                self.bytes_processed += len(body)
                 self.compressed_bytes_processed += resp['ContentLength']
+        else:
+            with gz_open(resp['Body'], mode='rt') as gz_f:
+                reader = csv_dict_reader(gz_f, delimiter=' ')
+                reader.fieldnames = [
+                    f.replace('-', '_') for f in reader.fieldnames
+                ]
+                yield from reader
+                with THREAD_LOCK:
+                    self.bytes_processed += gz_f.tell()
+                    self.compressed_bytes_processed += resp['ContentLength']
 
     def _get_keys(self, prefix):
         # S3 keys have a file name like:
