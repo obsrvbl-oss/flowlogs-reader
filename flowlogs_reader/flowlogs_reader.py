@@ -100,6 +100,7 @@ class FlowRecord:
         # Contra the docs, the start and end fields can contain
         # millisecond-based timestamps.
         # http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html
+
         if 'start' in event_data:
             start = int(event_data['start'])
             if start > EPOCH_32_MAX:
@@ -193,6 +194,10 @@ class FlowRecord:
             ret.append(transform(getattr(self, attr)))
 
         return ' '.join(ret)
+
+    # validate data is NOT transit gateway, issue # 11665
+    def validate_event_data(self):
+        pass
 
     @classmethod
     def from_cwl_event(cls, cwl_event, fields=DEFAULT_FIELDS):
