@@ -368,7 +368,7 @@ class FlowLogsReader(BaseReader):
         else:
             for event in self._read_streams():
                 validated_event = FlowRecord.from_cwl_event(event, self.fields)
-                if FlowRecord.validate(validated_event):
+                if FlowRecord.validate_not_transitgateway(validated_event):
                     yield validated_event
 
 
