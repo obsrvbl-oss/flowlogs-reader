@@ -209,13 +209,12 @@ class FlowRecord:
         else:
             return None
 
-    
+    # 11665, transitgateway logs mixed with VPC logs causes ValueError
     @classmethod
     def validate_not_transitgateway(cls, event):
         if event['account-id'] == 'TransitGateway':
             return False
         return True
-    
 
 
 class BaseReader:
