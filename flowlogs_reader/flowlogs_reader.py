@@ -371,6 +371,7 @@ class FlowLogsReader(BaseReader):
                 if FlowRecord.validate(validated_event):
                     yield validated_event
 
+
 class S3FlowLogsReader(BaseReader):
     def __init__(
         self,
