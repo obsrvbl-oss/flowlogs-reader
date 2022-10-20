@@ -102,7 +102,7 @@ class FlowRecord:
         # http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html
 
         if not self.validate_not_transitgateway(event_data):
-            return {}
+            return None
 
         if 'start' in event_data:
             start = int(event_data['start'])
