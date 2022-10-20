@@ -18,6 +18,7 @@ from csv import DictReader as csv_dict_reader
 from datetime import datetime, timedelta
 from gzip import open as gz_open
 from os.path import basename
+from wsgiref import validate
 from parquet import DictReader as parquet_dict_reader
 from threading import Lock
 
@@ -100,10 +101,6 @@ class FlowRecord:
         # Contra the docs, the start and end fields can contain
         # millisecond-based timestamps.
         # http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html
-
-        # validate data is NOT transit gateway, issue # 11665
-        if event_data['account_id'] == 'TransitGateway':
-            return None
 
         if 'start' in event_data:
             start = int(event_data['start'])
@@ -207,7 +204,18 @@ class FlowRecord:
         for key, value in zip(fields, data):
             event_data[key] = value
 
-        return cls(event_data)
+        if FlowRecord.validate_not_transitgateway(event_data):
+            return cls(event_data)
+        else:
+            return None
+
+    
+    @classmethod
+    def validate_not_transitgateway(cls, event):
+        if event['account-id'] == 'TransitGateway':
+            return False
+        return True
+    
 
 
 class BaseReader:
@@ -359,8 +367,9 @@ class FlowLogsReader(BaseReader):
                         yield FlowRecord.from_cwl_event(event, self.fields)
         else:
             for event in self._read_streams():
-                yield FlowRecord.from_cwl_event(event, self.fields)
-
+                validated_event = FlowRecord.from_cwl_event(event, self.fields)
+                if FlowRecord.validate(validated_event):
+                    yield validated_event
 
 class S3FlowLogsReader(BaseReader):
     def __init__(
@@ -495,4 +504,5 @@ class S3FlowLogsReader(BaseReader):
 
     def _reader(self):
         for event_data in self._read_streams():
-            yield FlowRecord(event_data)
+            if FlowRecord.validate_not_transitgateway(event_data):
+                yield FlowRecord(event_data)
