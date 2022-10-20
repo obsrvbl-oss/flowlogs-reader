@@ -101,6 +101,9 @@ class FlowRecord:
         # millisecond-based timestamps.
         # http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html
 
+        if not self.validate_event_data(event_data):
+            return {}
+
         if 'start' in event_data:
             start = int(event_data['start'])
             if start > EPOCH_32_MAX:
