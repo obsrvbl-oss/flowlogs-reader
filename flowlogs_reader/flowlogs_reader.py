@@ -101,7 +101,8 @@ class FlowRecord:
         # millisecond-based timestamps.
         # http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html
 
-        if not self.validate_not_transitgateway(event_data):
+        # validate data is NOT transit gateway, issue # 11665
+        if event_data['account_id'] == 'TransitGateway':
             return None
 
         if 'start' in event_data:
@@ -197,13 +198,6 @@ class FlowRecord:
             ret.append(transform(getattr(self, attr)))
 
         return ' '.join(ret)
-
-    # validate data is NOT transit gateway, issue # 11665
-    def validate_not_transitgateway(self, event_data):
-        if event_data['account_id'] == 'TransitGateway':
-            return False
-        else:
-            return True
 
     @classmethod
     def from_cwl_event(cls, cwl_event, fields=DEFAULT_FIELDS):
