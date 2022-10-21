@@ -360,15 +360,22 @@ class FlowLogsReader(BaseReader):
                 func = lambda x: list(self._read_streams(x))
                 for events in executor.map(func, all_streams):
                     for event in events:
-                        yield FlowRecord.from_cwl_event(event, self.fields)
+                        formatted_event = FlowRecord.from_cwl_event(
+                            event, self.fields
+                        )
+                        if FlowRecord.validate_not_transitgateway(
+                            formatted_event
+                        ):
+                            yield formatted_event
+                        else:
+                            continue
         else:
             for event in self._read_streams():
-                validated_event = FlowRecord.from_cwl_event(event, self.fields)
-                if FlowRecord.validate_not_transitgateway(validated_event):
-                    yield validated_event
+                formatted_event = FlowRecord.from_cwl_event(event, self.fields)
+                if FlowRecord.validate_not_transitgateway(formatted_event):
+                    yield formatted_event
                 else:
-                    return
-                    yield
+                    continue
 
 
 class S3FlowLogsReader(BaseReader):
@@ -507,5 +514,4 @@ class S3FlowLogsReader(BaseReader):
             if FlowRecord.validate_not_transitgateway(event_data):
                 yield FlowRecord(event_data)
             else:
-                return
-                yeild
+                continue
