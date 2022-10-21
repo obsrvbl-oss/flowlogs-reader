@@ -209,8 +209,9 @@ class FlowRecord:
     # 11665, transitgateway logs mixed with VPC logs causes ValueError
     @classmethod
     def validate_not_transitgateway(cls, event):
-        if event['account_id'] == 'TransitGateway':
-            return False
+        if 'account_id' in event:
+            if event['account_id'] == 'TransitGateway':
+                return False
         return True
 
 
