@@ -204,10 +204,7 @@ class FlowRecord:
         for key, value in zip(fields, data):
             event_data[key] = value
 
-        if FlowRecord.validate_not_transitgateway(event_data):
-            return cls(event_data)
-        else:
-            return None
+        return cls(event_data)
 
     # 11665, transitgateway logs mixed with VPC logs causes ValueError
     @classmethod
@@ -369,6 +366,9 @@ class FlowLogsReader(BaseReader):
                 validated_event = FlowRecord.from_cwl_event(event, self.fields)
                 if FlowRecord.validate_not_transitgateway(validated_event):
                     yield validated_event
+                else:
+                    return
+                    yield
 
 
 class S3FlowLogsReader(BaseReader):
@@ -506,3 +506,6 @@ class S3FlowLogsReader(BaseReader):
         for event_data in self._read_streams():
             if FlowRecord.validate_not_transitgateway(event_data):
                 yield FlowRecord(event_data)
+            else:
+                return
+                yeild
