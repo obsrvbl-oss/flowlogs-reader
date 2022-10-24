@@ -99,6 +99,29 @@ V5_FILE = (
     'subnet-0123456789abcdef 7 7 IPv4 5 vpc-04456ab739938ee3f\n'
 )
 
+V2_RECORDS_WITH_TGW = [
+    (
+        '2 123456789010 eni-102010ab 198.51.100.1 192.0.2.1 '
+        '443 49152 6 10 840 1439387263 1439387264 ACCEPT OK'
+    ),
+    (
+        '2 123456789010 eni-102010ab 192.0.2.1 198.51.100.1 '
+        '49152 443 6 20 1680 1439387264 1439387265 ACCEPT OK'
+    ),
+    (
+        '2 TransitGateway eni-102010cd 192.0.2.1 198.51.100.1 '
+        '49152 443 6 20 1680 1439387263 1439387266 REJECT OK'
+    ),
+    (
+        '2 TransitGateway eni-1a2b3c4d - - - - - - - '
+        '1431280876 1431280934 - NODATA'
+    ),
+    (
+        '2 TransitGateway eni-4b118871 - - - - - - - '
+        '1431280876 1431280934 - SKIPDATA'
+    ),
+]
+
 PARQUET_FILE = 'tests/data/flows.parquet'
 
 
@@ -206,6 +229,47 @@ class FlowRecordTestCase(TestCase):
         )
         self.assertIsNone(flow_record.start)
         self.assertIsNone(flow_record.end)
+
+    def test_validate_not_transitgateway(self):
+        with self.subTest('event is of type account_id=TransitGateway'):
+            event = {
+                'version': 2,
+                'account_id': 'TransitGateway',
+                'interface_id': 'eni-102010cd',
+                'srcaddr': '192.0.2.1',
+                'dstaddr': '198.51.100.1',
+                'srcport': 49152,
+                'dstport': 443,
+                'protocol': 6,
+                'packets': 20,
+                'bytes': 1680,
+                'start': datetime(2015, 8, 12, 13, 47, 43),
+                'end': datetime(2015, 8, 12, 13, 47, 46),
+                'action': 'REJECT', 'log_status': 'OK'
+            }
+            actual = FlowRecord.validate_not_transitgateway(event)
+            expected = False
+            self.assertEqual(actual, expected)
+
+        with self.subTest('event is not of type account_id=TransitGateway'):
+            event = {
+                'version': 2,
+                'account_id': '123456789010',
+                'interface_id': 'eni-102010cd',
+                'srcaddr': '192.0.2.1',
+                'dstaddr': '198.51.100.1',
+                'srcport': 49152,
+                'dstport': 443,
+                'protocol': 6,
+                'packets': 20,
+                'bytes': 1680,
+                'start': datetime(2015, 8, 12, 13, 47, 43),
+                'end': datetime(2015, 8, 12, 13, 47, 46),
+                'action': 'REJECT', 'log_status': 'OK'
+            }
+            actual = FlowRecord.validate_not_transitgateway(event)
+            expected = True
+            self.assertEqual(actual, expected)
 
 
 class FlowLogsReaderTestCase(TestCase):
