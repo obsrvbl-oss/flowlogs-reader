@@ -223,7 +223,6 @@ class FlowRecord:
         for key, value in zip(fields, data):
             event_data[key] = value
 
-        print(f'from_cwl_event: {event_data}')
         return cls(event_data)
 
 
