@@ -103,8 +103,10 @@ class FlowRecord:
         # http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html
 
         # 11665, transitgateway logs mixed with VPC logs causes ValueError
+        # https://docs.aws.amazon.com/vpc/latest/tgw/tgw-flow-logs.html#flow-log-records
+        # If logs mixed, will return blank flowrecord for TransitGateway
         if 'account_id' in event_data:
-            if event_data['account_id'] == 'TransitGateway':
+            if 'TransitGateway' in event_data['account_id']:
                 self.flowrecord_attr()
                 return
 
