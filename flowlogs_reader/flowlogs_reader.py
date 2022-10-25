@@ -102,6 +102,12 @@ class FlowRecord:
         # millisecond-based timestamps.
         # http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html
 
+        # 11665, transitgateway logs mixed with VPC logs causes ValueError
+        if 'account_id' in event_data:
+            if event_data['account_id'] == 'TransitGateway':
+                self.flowrecord_attr()
+                return
+
         if 'start' in event_data:
             start = int(event_data['start'])
             if start > EPOCH_32_MAX:
@@ -117,6 +123,10 @@ class FlowRecord:
             self.end = datetime.utcfromtimestamp(end)
         else:
             self.end = None
+
+        self.flowrecord_attr(event_data)
+
+    def flowrecord_attr(self, event_data=None):
 
         for key, func in (
             ('version', int),
@@ -147,13 +157,19 @@ class FlowRecord:
             ('flow_direction', str),
             ('traffic_path', int),
         ):
-            value = event_data.get(key, '-')
+
+            if event_data is None:
+                value = None
+            else:
+                value = event_data.get(key, '-')
+
             if value == '-' or value == 'None' or value is None:
                 value = None
             else:
                 value = func(value)
 
             setattr(self, key, value)
+
 
     def __eq__(self, other):
         try:
@@ -205,14 +221,6 @@ class FlowRecord:
             event_data[key] = value
 
         return cls(event_data)
-
-    # 11665, transitgateway logs mixed with VPC logs causes ValueError
-    @classmethod
-    def validate_not_transitgateway(cls, event):
-        if 'account_id' in event:
-            if event['account_id'] == 'TransitGateway':
-                return False
-        return True
 
 
 class BaseReader:
@@ -361,22 +369,10 @@ class FlowLogsReader(BaseReader):
                 func = lambda x: list(self._read_streams(x))
                 for events in executor.map(func, all_streams):
                     for event in events:
-                        formatted_event = FlowRecord.from_cwl_event(
-                            event, self.fields
-                        )
-                        if FlowRecord.validate_not_transitgateway(
-                            formatted_event
-                        ):
-                            yield formatted_event
-                        else:
-                            continue
+                        yield FlowRecord.from_cwl_event(event, self.fields)
         else:
             for event in self._read_streams():
-                formatted_event = FlowRecord.from_cwl_event(event, self.fields)
-                if FlowRecord.validate_not_transitgateway(formatted_event):
-                    yield formatted_event
-                else:
-                    continue
+                yield FlowRecord.from_cwl_event(event, self.fields)
 
 
 class S3FlowLogsReader(BaseReader):
@@ -512,7 +508,4 @@ class S3FlowLogsReader(BaseReader):
 
     def _reader(self):
         for event_data in self._read_streams():
-            if FlowRecord.validate_not_transitgateway(event_data):
-                yield FlowRecord(event_data)
-            else:
-                continue
+            yield FlowRecord(event_data)
