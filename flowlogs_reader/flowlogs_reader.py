@@ -57,6 +57,7 @@ NODATA = 'NODATA'
 
 THREAD_LOCK = Lock()
 
+TGW_FAIL = ['TransitGateway', 'TransitGatewayAttachment']
 
 class FlowRecord:
     """
@@ -106,7 +107,7 @@ class FlowRecord:
         # https://docs.aws.amazon.com/vpc/latest/tgw/tgw-flow-logs.html#flow-log-records
         # If logs mixed, will return blank flowrecord for TransitGateway
         if 'account_id' in event_data:
-            if 'TransitGateway' in event_data['account_id']:
+            if event_data['account_id'] in TGW_FAIL:
                 self.flowrecord_attr()
                 self.start, self.end = None, None
                 return
