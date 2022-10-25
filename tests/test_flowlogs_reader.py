@@ -99,7 +99,7 @@ V5_FILE = (
     'subnet-0123456789abcdef 7 7 IPv4 5 vpc-04456ab739938ee3f\n'
 )
 
-V2_RECORDS_WITH_TGW = [
+V2_RECORDS_MIXED_TGW = [
     (
         '2 123456789010 eni-102010ab 198.51.100.1 192.0.2.1 '
         '443 49152 6 10 840 1439387263 1439387264 ACCEPT OK'
@@ -109,15 +109,15 @@ V2_RECORDS_WITH_TGW = [
         '49152 443 6 20 1680 1439387264 1439387265 ACCEPT OK'
     ),
     (
-        '2 TransitGateway eni-102010cd 192.0.2.1 198.51.100.1 '
+        '6 TransitGateway eni-102010cd 192.0.2.1 198.51.100.1 '
         '49152 443 6 20 1680 1439387263 1439387266 REJECT OK'
     ),
     (
-        '2 TransitGateway eni-1a2b3c4d - - - - - - - '
+        '2 123456789010 eni-1a2b3c4d - - - - - - - '
         '1431280876 1431280934 - NODATA'
     ),
     (
-        '2 TransitGateway eni-4b118871 - - - - - - - '
+        '2 123456789010 eni-4b118871 - - - - - - - '
         '1431280876 1431280934 - SKIPDATA'
     ),
 ]
@@ -144,6 +144,27 @@ class FlowRecordTestCase(TestCase):
             'srcport': 443,
             'start': datetime(2015, 8, 12, 13, 47, 43),
             'version': 2,
+        }
+        self.assertEqual(actual, expected)
+
+    def test_parse_tgw(self):
+        flow_record = FlowRecord.from_cwl_event({'message': V2_RECORDS_MIXED_TGW[2]})
+        actual = flow_record.to_dict()
+        expected = {
+            'account_id': None,
+            'action': None,
+            'bytes': None,
+            'dstaddr': None,
+            'dstport': None,
+            'end': None,
+            'interface_id': None,
+            'log_status': None,
+            'packets': None,
+            'protocol': None,
+            'srcaddr': None,
+            'srcport': None,
+            'start': None,
+            'version': None,
         }
         self.assertEqual(actual, expected)
 
@@ -229,47 +250,6 @@ class FlowRecordTestCase(TestCase):
         )
         self.assertIsNone(flow_record.start)
         self.assertIsNone(flow_record.end)
-
-    def test_validate_not_transitgateway(self):
-        with self.subTest('event is of type account_id=TransitGateway'):
-            event = {
-                'version': 2,
-                'account_id': 'TransitGateway',
-                'interface_id': 'eni-102010cd',
-                'srcaddr': '192.0.2.1',
-                'dstaddr': '198.51.100.1',
-                'srcport': 49152,
-                'dstport': 443,
-                'protocol': 6,
-                'packets': 20,
-                'bytes': 1680,
-                'start': datetime(2015, 8, 12, 13, 47, 43),
-                'end': datetime(2015, 8, 12, 13, 47, 46),
-                'action': 'REJECT', 'log_status': 'OK'
-            }
-            actual = FlowRecord.validate_not_transitgateway(event)
-            expected = False
-            self.assertEqual(actual, expected)
-
-        with self.subTest('event is not of type account_id=TransitGateway'):
-            event = {
-                'version': 2,
-                'account_id': '123456789010',
-                'interface_id': 'eni-102010cd',
-                'srcaddr': '192.0.2.1',
-                'dstaddr': '198.51.100.1',
-                'srcport': 49152,
-                'dstport': 443,
-                'protocol': 6,
-                'packets': 20,
-                'bytes': 1680,
-                'start': datetime(2015, 8, 12, 13, 47, 43),
-                'end': datetime(2015, 8, 12, 13, 47, 46),
-                'action': 'REJECT', 'log_status': 'OK'
-            }
-            actual = FlowRecord.validate_not_transitgateway(event)
-            expected = True
-            self.assertEqual(actual, expected)
 
 
 class FlowLogsReaderTestCase(TestCase):
@@ -760,6 +740,70 @@ class S3FlowLogsReaderTestCase(TestCase):
         )
 
     def test_serial_v5(self):
+        expected = [
+            {
+                'account_id': '999999999999',
+                'action': 'ACCEPT',
+                'az_id': 'use2-az2',
+                'bytes': 4895,
+                'dstaddr': '192.0.2.156',
+                'dstport': 50318,
+                'end': datetime(2021, 3, 4, 14, 1, 51),
+                'flow_direction': 'ingress',
+                'instance_id': 'i-00123456789abcdef',
+                'interface_id': 'eni-00123456789abcdef',
+                'log_status': 'OK',
+                'packets': 15,
+                'pkt_dstaddr': '192.0.2.156',
+                'pkt_src_aws_service': 'S3',
+                'pkt_srcaddr': '198.51.100.6',
+                'protocol': 6,
+                'region': 'us-east-2',
+                'srcaddr': '198.51.100.7',
+                'srcport': 443,
+                'start': datetime(2021, 3, 4, 14, 1, 33),
+                'subnet_id': 'subnet-0123456789abcdef',
+                'tcp_flags': 19,
+                'type': 'IPv4',
+                'version': 5,
+                'vpc_id': 'vpc-04456ab739938ee3f',
+            },
+            {
+                'account_id': '999999999999',
+                'action': 'ACCEPT',
+                'az_id': 'use2-az2',
+                'bytes': 3015,
+                'dstaddr': '198.51.100.6',
+                'dstport': 443,
+                'end': datetime(2021, 3, 4, 14, 1, 51),
+                'flow_direction': 'egress',
+                'instance_id': 'i-00123456789abcdef',
+                'interface_id': 'eni-00123456789abcdef',
+                'log_status': 'OK',
+                'packets': 16,
+                'pkt_dst_aws_service': 'S3',
+                'pkt_dstaddr': '198.51.100.7',
+                'pkt_srcaddr': '192.0.2.156',
+                'protocol': 6,
+                'region': 'us-east-2',
+                'srcaddr': '192.0.2.156',
+                'srcport': 50318,
+                'start': datetime(2021, 3, 4, 14, 1, 33),
+                'subnet_id': 'subnet-0123456789abcdef',
+                'tcp_flags': 7,
+                'traffic_path': 7,
+                'type': 'IPv4',
+                'version': 5,
+                'vpc_id': 'vpc-04456ab739938ee3f',
+            },
+        ]
+        reader = self._test_iteration(V5_FILE, expected)
+        self.assertEqual(reader.bytes_processed, len(V5_FILE.encode()))
+        self.assertEqual(
+            reader.compressed_bytes_processed, len(compress(V5_FILE.encode()))
+        )
+
+    def test_serial_v5_tgw(self):
         expected = [
             {
                 'account_id': '999999999999',
