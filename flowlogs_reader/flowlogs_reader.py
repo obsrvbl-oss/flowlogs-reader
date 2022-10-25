@@ -108,6 +108,7 @@ class FlowRecord:
         if 'account_id' in event_data:
             if 'TransitGateway' in event_data['account_id']:
                 self.flowrecord_attr()
+                self.start, self.end = None, None
                 return
 
         if 'start' in event_data:
@@ -222,6 +223,7 @@ class FlowRecord:
         for key, value in zip(fields, data):
             event_data[key] = value
 
+        print(f'from_cwl_event: {event_data}')
         return cls(event_data)
 
 

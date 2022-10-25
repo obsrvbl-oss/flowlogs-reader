@@ -150,22 +150,7 @@ class FlowRecordTestCase(TestCase):
     def test_parse_tgw(self):
         flow_record = FlowRecord.from_cwl_event({'message': V2_RECORDS_MIXED_TGW[2]})
         actual = flow_record.to_dict()
-        expected = {
-            'account_id': None,
-            'action': None,
-            'bytes': None,
-            'dstaddr': None,
-            'dstport': None,
-            'end': None,
-            'interface_id': None,
-            'log_status': None,
-            'packets': None,
-            'protocol': None,
-            'srcaddr': None,
-            'srcport': None,
-            'start': None,
-            'version': None,
-        }
+        expected = {}
         self.assertEqual(actual, expected)
 
     def test_eq(self):
