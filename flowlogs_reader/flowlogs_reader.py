@@ -58,6 +58,7 @@ NODATA = 'NODATA'
 THREAD_LOCK = Lock()
 
 TGW_FAIL = ['TransitGateway', 'TransitGatewayAttachment']
+SKIP_RECORD = -1
 
 class FlowRecord:
     """
@@ -107,9 +108,9 @@ class FlowRecord:
         # https://docs.aws.amazon.com/vpc/latest/tgw/tgw-flow-logs.html#flow-log-records
         # If logs mixed, will return blank flowrecord for TransitGateway
         if 'account_id' in event_data:
-            if event_data['account_id'] in TGW_FAIL:
+            if event_data['account_id'] in TGW_FAIL :
                 self.flowrecord_attr()
-                self.account_id = 'TGW_DROP'
+                self.version = SKIP_RECORD
                 self.start, self.end = None, None
                 return
 
@@ -132,7 +133,6 @@ class FlowRecord:
         self.flowrecord_attr(event_data)
 
     def flowrecord_attr(self, event_data=None):
-
         for key, func in (
             ('version', int),
             ('account_id', str),
@@ -174,7 +174,6 @@ class FlowRecord:
                 value = func(value)
 
             setattr(self, key, value)
-
 
     def __eq__(self, other):
         try:
@@ -375,12 +374,12 @@ class FlowLogsReader(BaseReader):
                 for events in executor.map(func, all_streams):
                     for event in events:
                         flow = FlowRecord.from_cwl_event(event, self.fields)
-                        if flow.account_id != 'TGW_DROP':
+                        if flow.version != SKIP_RECORD:
                             yield flow
         else:
             for event in self._read_streams():
                 flow = FlowRecord.from_cwl_event(event, self.fields)
-                if flow.account_id != 'TGW_DROP':
+                if flow.version != SKIP_RECORD:
                     yield flow
 
 
@@ -518,5 +517,5 @@ class S3FlowLogsReader(BaseReader):
     def _reader(self):
         for event_data in self._read_streams():
             flow = FlowRecord(event_data)
-            if flow.account_id != 'TGW_DROP':
+            if flow.version != SKIP_RECORD:
                 yield flow

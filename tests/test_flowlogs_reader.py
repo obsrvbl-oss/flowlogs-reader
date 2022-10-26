@@ -35,6 +35,8 @@ from flowlogs_reader.flowlogs_reader import (
 )
 
 
+SKIP_RECORD = -1
+
 V2_RECORDS = [
     (
         '2 123456789010 eni-102010ab 198.51.100.1 192.0.2.1 '
@@ -150,7 +152,7 @@ class FlowRecordTestCase(TestCase):
     def test_parse_tgw(self):
         flow_record = FlowRecord.from_cwl_event({'message': V2_RECORDS_MIXED_TGW[2]})
         actual = flow_record.to_dict()
-        expected = {'account_id': 'TGW_DROP'}
+        expected = {'version': SKIP_RECORD}
         self.assertEqual(actual, expected)
 
     def test_eq(self):
