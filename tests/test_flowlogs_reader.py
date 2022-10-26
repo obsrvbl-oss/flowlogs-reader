@@ -58,6 +58,10 @@ V2_RECORDS = [
         '2 123456789010 eni-4b118871 - - - - - - - '
         '1431280876 1431280934 - SKIPDATA'
     ),
+    (
+        '6 TransitGateway eni-102010cd 192.0.2.1 198.51.100.1 '
+        '49152 443 6 20 1680 1439387263 1439387266 REJECT OK'
+    ),
 ]
 
 V3_FILE = (
@@ -101,29 +105,6 @@ V5_FILE = (
     'subnet-0123456789abcdef 7 7 IPv4 5 vpc-04456ab739938ee3f\n'
 )
 
-V2_RECORDS_MIXED_TGW = [
-    (
-        '2 123456789010 eni-102010ab 198.51.100.1 192.0.2.1 '
-        '443 49152 6 10 840 1439387263 1439387264 ACCEPT OK'
-    ),
-    (
-        '2 123456789010 eni-102010ab 192.0.2.1 198.51.100.1 '
-        '49152 443 6 20 1680 1439387264 1439387265 ACCEPT OK'
-    ),
-    (
-        '6 TransitGateway eni-102010cd 192.0.2.1 198.51.100.1 '
-        '49152 443 6 20 1680 1439387263 1439387266 REJECT OK'
-    ),
-    (
-        '2 123456789010 eni-1a2b3c4d - - - - - - - '
-        '1431280876 1431280934 - NODATA'
-    ),
-    (
-        '2 123456789010 eni-4b118871 - - - - - - - '
-        '1431280876 1431280934 - SKIPDATA'
-    ),
-]
-
 PARQUET_FILE = 'tests/data/flows.parquet'
 
 
@@ -150,7 +131,7 @@ class FlowRecordTestCase(TestCase):
         self.assertEqual(actual, expected)
 
     def test_parse_tgw(self):
-        flow_record = FlowRecord.from_cwl_event({'message': V2_RECORDS_MIXED_TGW[2]})
+        flow_record = FlowRecord.from_cwl_event({'message': V2_RECORDS[5]})
         actual = flow_record.to_dict()
         expected = {'version': SKIP_RECORD}
         self.assertEqual(actual, expected)
@@ -339,6 +320,7 @@ class FlowLogsReaderTestCase(TestCase):
                     {'logStreamName': 'log_0', 'message': V2_RECORDS[2]},
                     {'logStreamName': 'log_1', 'message': V2_RECORDS[3]},
                     {'logStreamName': 'log_2', 'message': V2_RECORDS[4]},
+                    {'logStreamName': 'log_2', 'message': V2_RECORDS[5]},
                 ],
             },
         ]
@@ -348,7 +330,7 @@ class FlowLogsReaderTestCase(TestCase):
         # Calling list on the instance causes it to iterate through all records
         actual = [next(self.inst)] + list(self.inst)
         expected = [
-            FlowRecord.from_cwl_event({'message': x}) for x in V2_RECORDS
+            FlowRecord.from_cwl_event({'message': x}) for x in V2_RECORDS[:-1]
         ]
         self.assertEqual(actual, expected)
 
