@@ -108,7 +108,7 @@ class FlowRecord:
         # https://docs.aws.amazon.com/vpc/latest/tgw/tgw-flow-logs.html#flow-log-records
         # If logs mixed, will return blank flowrecord for TransitGateway
         if 'account_id' in event_data:
-            if event_data['account_id'] in TGW_FAIL :
+            if event_data['account_id'] in TGW_FAIL:
                 self.flowrecord_attr()
                 self.version = SKIP_RECORD
                 self.start, self.end = None, None
