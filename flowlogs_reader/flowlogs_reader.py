@@ -109,6 +109,7 @@ class FlowRecord:
         if 'account_id' in event_data:
             if event_data['account_id'] in TGW_FAIL:
                 self.flowrecord_attr()
+                self.account_id = 'TGW_DROP'
                 self.start, self.end = None, None
                 return
 
@@ -225,13 +226,6 @@ class FlowRecord:
             event_data[key] = value
 
         return cls(event_data)
-    
-    @classmethod 
-    def validate_non_tgw_event_data(cls, event_data):
-        if 'account_id' in event_data:
-            if event_data['account_id'] in TGW_FAIL:
-                return False
-        return True
 
 
 class BaseReader:
@@ -381,12 +375,12 @@ class FlowLogsReader(BaseReader):
                 for events in executor.map(func, all_streams):
                     for event in events:
                         flow = FlowRecord.from_cwl_event(event, self.fields)
-                        if FlowRecord.validate_non_tgw_event_data(event):
+                        if flow.account_id != 'TGW_DROP':
                             yield flow
         else:
             for event in self._read_streams():
                 flow = FlowRecord.from_cwl_event(event, self.fields)
-                if FlowRecord.validate_non_tgw_event_data(event):
+                if flow.account_id != 'TGW_DROP':
                     yield flow
 
 
@@ -524,5 +518,5 @@ class S3FlowLogsReader(BaseReader):
     def _reader(self):
         for event_data in self._read_streams():
             flow = FlowRecord(event_data)
-            if FlowRecord.validate_non_tgw_event_data(event_data):
+            if flow.account_id != 'TGW_DROP':
                 yield flow
