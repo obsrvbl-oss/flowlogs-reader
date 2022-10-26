@@ -172,6 +172,13 @@ class FlowRecord:
                 ret.append('{}: {}'.format(key, value))
         return ', '.join(ret)
 
+    def is_transit_gateway(self, event_data):
+        if 'account_id' in event_data:
+            if event_data['account_id'] in ['TransitGateway', 'TransitGatewayAttachment']:
+                return True
+            else:
+                return False
+
     def to_dict(self):
         ret = {}
         for key in self.__slots__:
@@ -351,10 +358,14 @@ class FlowLogsReader(BaseReader):
                 func = lambda x: list(self._read_streams(x))
                 for events in executor.map(func, all_streams):
                     for event in events:
-                        yield FlowRecord.from_cwl_event(event, self.fields)
+                        flow = FlowRecord(event)
+                        if not flow.is_transit_gateway(event):
+                            yield flow.from_cwl_event(event, self.fields)
         else:
             for event in self._read_streams():
-                yield FlowRecord.from_cwl_event(event, self.fields)
+                flow = FlowRecord(event)
+                if not flow.is_transit_gateway(event):
+                    yield flow.from_cwl_event(event, self.fields)
 
 
 class S3FlowLogsReader(BaseReader):
@@ -490,4 +501,6 @@ class S3FlowLogsReader(BaseReader):
 
     def _reader(self):
         for event_data in self._read_streams():
-            yield FlowRecord(event_data)
+            flow = FlowRecord(event_data)
+            if not flow.is_transit_gateway(event_data): # is_transit_gateway property TBD - is it a new slot?
+                yield flow
