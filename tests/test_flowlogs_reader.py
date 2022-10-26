@@ -790,69 +790,6 @@ class S3FlowLogsReaderTestCase(TestCase):
             reader.compressed_bytes_processed, len(compress(V5_FILE.encode()))
         )
 
-    def test_serial_v5_tgw(self):
-        expected = [
-            {
-                'account_id': '999999999999',
-                'action': 'ACCEPT',
-                'az_id': 'use2-az2',
-                'bytes': 4895,
-                'dstaddr': '192.0.2.156',
-                'dstport': 50318,
-                'end': datetime(2021, 3, 4, 14, 1, 51),
-                'flow_direction': 'ingress',
-                'instance_id': 'i-00123456789abcdef',
-                'interface_id': 'eni-00123456789abcdef',
-                'log_status': 'OK',
-                'packets': 15,
-                'pkt_dstaddr': '192.0.2.156',
-                'pkt_src_aws_service': 'S3',
-                'pkt_srcaddr': '198.51.100.6',
-                'protocol': 6,
-                'region': 'us-east-2',
-                'srcaddr': '198.51.100.7',
-                'srcport': 443,
-                'start': datetime(2021, 3, 4, 14, 1, 33),
-                'subnet_id': 'subnet-0123456789abcdef',
-                'tcp_flags': 19,
-                'type': 'IPv4',
-                'version': 5,
-                'vpc_id': 'vpc-04456ab739938ee3f',
-            },
-            {
-                'account_id': '999999999999',
-                'action': 'ACCEPT',
-                'az_id': 'use2-az2',
-                'bytes': 3015,
-                'dstaddr': '198.51.100.6',
-                'dstport': 443,
-                'end': datetime(2021, 3, 4, 14, 1, 51),
-                'flow_direction': 'egress',
-                'instance_id': 'i-00123456789abcdef',
-                'interface_id': 'eni-00123456789abcdef',
-                'log_status': 'OK',
-                'packets': 16,
-                'pkt_dst_aws_service': 'S3',
-                'pkt_dstaddr': '198.51.100.7',
-                'pkt_srcaddr': '192.0.2.156',
-                'protocol': 6,
-                'region': 'us-east-2',
-                'srcaddr': '192.0.2.156',
-                'srcport': 50318,
-                'start': datetime(2021, 3, 4, 14, 1, 33),
-                'subnet_id': 'subnet-0123456789abcdef',
-                'tcp_flags': 7,
-                'traffic_path': 7,
-                'type': 'IPv4',
-                'version': 5,
-                'vpc_id': 'vpc-04456ab739938ee3f',
-            },
-        ]
-        reader = self._test_iteration(V5_FILE, expected)
-        self.assertEqual(reader.bytes_processed, len(V5_FILE.encode()))
-        self.assertEqual(
-            reader.compressed_bytes_processed, len(compress(V5_FILE.encode()))
-        )
 
     def _test_parquet_reader(self, data, expected):
         boto_client = boto3.client('s3')
