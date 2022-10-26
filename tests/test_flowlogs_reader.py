@@ -790,7 +790,6 @@ class S3FlowLogsReaderTestCase(TestCase):
             reader.compressed_bytes_processed, len(compress(V5_FILE.encode()))
         )
 
-
     def _test_parquet_reader(self, data, expected):
         boto_client = boto3.client('s3')
         with Stubber(boto_client) as stubbed_client:
