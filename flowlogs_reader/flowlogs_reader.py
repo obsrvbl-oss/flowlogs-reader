@@ -100,10 +100,6 @@ class FlowRecord:
     ]
 
     def __init__(self, event_data, EPOCH_32_MAX=2147483647):
-        # Contra the docs, the start and end fields can contain
-        # millisecond-based timestamps.
-        # http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html
-
         # AWS allows VPCFlowLogs and TransitGateway logs to exist in the same file. 
         # In this case, we will set an invalid version number so that reader classes 
         # can properly skip that record. 
@@ -114,6 +110,9 @@ class FlowRecord:
             self.start, self.end = None, None
             return
 
+        # Contra the docs, the start and end fields can contain
+        # millisecond-based timestamps.
+        # http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html
         if 'start' in event_data:
             start = int(event_data['start'])
             if start > EPOCH_32_MAX:
