@@ -110,8 +110,10 @@ class FlowRecord:
             if event_data['account_id'] in TGW_FAIL:
                 self.flowrecord_attr()
                 self.start, self.end = None, None
+                self.is_transitgateway = True
                 return
 
+        self.is_transitgateway = False
         if 'start' in event_data:
             start = int(event_data['start'])
             if start > EPOCH_32_MAX:
@@ -373,10 +375,14 @@ class FlowLogsReader(BaseReader):
                 func = lambda x: list(self._read_streams(x))
                 for events in executor.map(func, all_streams):
                     for event in events:
-                        yield FlowRecord.from_cwl_event(event, self.fields)
+                        flow = FlowRecord.from_cwl_event(event, self.fields)
+                        if not flow.is_transitgateway:
+                            yield flow
         else:
             for event in self._read_streams():
-                yield FlowRecord.from_cwl_event(event, self.fields)
+                flow = FlowRecord.from_cwl_event(event, self.fields)
+                if not flow.is_transitgateway:
+                    yield flow
 
 
 class S3FlowLogsReader(BaseReader):
@@ -512,4 +518,6 @@ class S3FlowLogsReader(BaseReader):
 
     def _reader(self):
         for event_data in self._read_streams():
-            yield FlowRecord(event_data)
+            flow = FlowRecord(event_data)
+            if not flow.is_transitgateway:
+                yield flow
