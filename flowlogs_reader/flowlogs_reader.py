@@ -104,10 +104,10 @@ class FlowRecord:
         # millisecond-based timestamps.
         # http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/flow-logs.html
 
-        # 11665, transitgateway logs mixed with VPC logs causes ValueError
+        # AWS allows VPCFlowLogs and TransitGateway logs to exist in the same file. 
+        # In this case, we will set an invalid version number so that reader classes 
+        # can properly skip that record. 
         # https://docs.aws.amazon.com/vpc/latest/tgw/tgw-flow-logs.html#flow-log-records
-        # If logs mixed, will return blank flowrecord for TransitGateway
-
         if event_data.get('account_id') in TGW_FAIL:
             self.flowrecord_attr()
             self.version = SKIP_RECORD
