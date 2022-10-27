@@ -18,7 +18,6 @@ from csv import DictReader as csv_dict_reader
 from datetime import datetime, timedelta
 from gzip import open as gz_open
 from os.path import basename
-from wsgiref import validate
 from parquet import DictReader as parquet_dict_reader
 from threading import Lock
 
