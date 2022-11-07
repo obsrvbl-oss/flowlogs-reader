@@ -32,10 +32,9 @@ from flowlogs_reader import (
 from flowlogs_reader.flowlogs_reader import (
     DUPLICATE_NEXT_TOKEN_MESSAGE,
     LAST_EVENT_DELAY_MSEC,
+    SKIP_RECORD
 )
 
-
-SKIP_RECORD = -1
 
 V2_RECORDS = [
     (

@@ -103,7 +103,7 @@ class FlowRecord:
         # In this case, we will set an invalid version number so that reader classes 
         # can properly skip that record. 
         # https://docs.aws.amazon.com/vpc/latest/tgw/tgw-flow-logs.html#flow-log-records
-        if event_data.get('account_id') in TGW_FAIL:
+        if event_data.get('account_id') in {'TransitGateway', 'TransitGatewayAttachment'}:
             self.flowrecord_attr()
             self.version = SKIP_RECORD
             self.start, self.end = None, None
