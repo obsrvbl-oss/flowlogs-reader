@@ -104,8 +104,9 @@ V6_FILE = (
     'tgw-dst-subnet-id tgw-src-eni tgw-dst-eni tgw-src-az-id tgw-dst-az-id '
     'tgw-pair-attachment-id packets-lost-no-route packets-lost-blackhole '
     'packets-lost-mtu-exceeded packets-lost-ttl-expired\n'
-    'TransitGateway 00000000 00000001 00000002 00000003 00000004 00000005 00000006 '
-    '00000007 00000008 00000009 00000010 00000011 00000012 13 14 15 16\n'
+    'TransitGateway 00000000 00000001 00000002 00000003 00000004 00000005 '
+    '00000006 00000007 00000008 00000009 00000010 00000011 00000012 13 14 15 '
+    '16\n'
 )
 
 PARQUET_FILE = 'tests/data/flows.parquet'
@@ -789,7 +790,6 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'packets_lost_blackhole': 14,
                 'packets_lost_mtu_exceeded': 15,
                 'packets_lost_ttl_expired': 16,
-
             },
         ]
         self.maxDiff = None
