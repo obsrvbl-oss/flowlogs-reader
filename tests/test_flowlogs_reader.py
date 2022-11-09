@@ -98,6 +98,15 @@ V5_FILE = (
     '- 192.0.2.156 6 us-east-2 192.0.2.156 50318 1614866493 - - '
     'subnet-0123456789abcdef 7 7 IPv4 5 vpc-04456ab739938ee3f\n'
 )
+V6_FILE = (
+    'resource-type tgw-id tgw-attachment-id tgw-src-vpc-account-id '
+    'tgw-dst-vpc-account-id tgw-src-vpc-id tgw-dst-vpc-id tgw-src-subnet-id '
+    'tgw-dst-subnet-id tgw-src-eni tgw-dst-eni tgw-src-az-id tgw-dst-az-id '
+    'tgw-pair-attachment-id packets-lost-no-route packets-lost-blackhole '
+    'packets-lost-mtu-exceeded packets-lost-ttl-expired\n'
+    'TransitGateway 00000000 00000001 00000002 00000003 00000004 00000005 00000006 '
+    '00000007 00000008 00000009 00000010 00000011 00000012 13 14 15 16\n'
+)
 
 PARQUET_FILE = 'tests/data/flows.parquet'
 
@@ -757,6 +766,37 @@ class S3FlowLogsReaderTestCase(TestCase):
         self.assertEqual(reader.bytes_processed, len(V5_FILE.encode()))
         self.assertEqual(
             reader.compressed_bytes_processed, len(compress(V5_FILE.encode()))
+        )
+
+    def test_serial_v6(self):
+        expected = [
+            {
+                'resource_type': 'TransitGateway',
+                'tgw_id': '00000000',
+                'tgw_attachment_id': '00000001',
+                'tgw_src_vpc_account_id': '00000002',
+                'tgw_dst_vpc_account_id': '00000003',
+                'tgw_src_vpc_id': '00000004',
+                'tgw_dst_vpc_id': '00000005',
+                'tgw_src_subnet_id': '00000006',
+                'tgw_dst_subnet_id': '00000007',
+                'tgw_src_eni': '00000008',
+                'tgw_dst_eni': '00000009',
+                'tgw_src_az_id': '00000010',
+                'tgw_dst_az_id': '00000011',
+                'tgw_pair_attachment_id': '00000012',
+                'packets_lost_no_route': 13,
+                'packets_lost_blackhole': 14,
+                'packets_lost_mtu_exceeded': 15,
+                'packets_lost_ttl_expired': 16,
+
+            },
+        ]
+        self.maxDiff = None
+        reader = self._test_iteration(V6_FILE, expected)
+        self.assertEqual(reader.bytes_processed, len(V6_FILE.encode()))
+        self.assertEqual(
+            reader.compressed_bytes_processed, len(compress(V6_FILE.encode()))
         )
 
     def _test_parquet_reader(self, data, expected):
