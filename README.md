@@ -162,6 +162,7 @@ When using `S3FlowLogsReader` with S3:
 
 * The `include_accounts` keyword is an iterable of account identifiers (as strings) used to filter the logs.
 * The `include_regions` keyword is an iterable of region names used to filter the logs.
+* The `check_column_count` can be set to `True` to filter out rows with the wrong number of columns (for CSV format only).
 
 ## Examples
 

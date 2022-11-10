@@ -481,7 +481,7 @@ class S3FlowLogsReaderTestCase(TestCase):
     def tearDown(self):
         pass
 
-    def _test_iteration(self, data, expected):
+    def _test_iteration(self, data, expected, **kwargs):
         boto_client = boto3.client('s3')
         with Stubber(boto_client) as stubbed_client:
             # Accounts call
@@ -594,6 +594,7 @@ class S3FlowLogsReaderTestCase(TestCase):
                 include_accounts={'123456789010'},
                 include_regions={'pangaea-1'},
                 boto_client=boto_client,
+                **kwargs
             )
             actual = [record.to_dict() for record in reader]
             self.assertEqual(actual, expected)
@@ -643,7 +644,7 @@ class S3FlowLogsReaderTestCase(TestCase):
                 'pkt_dstaddr': '192.168.0.1',
             },
         ]
-        reader = self._test_iteration(V3_FILE, expected)
+        reader = self._test_iteration(V3_FILE, expected, check_column_count=True)
         self.assertEqual(reader.bytes_processed, len(V3_FILE.encode()))
         self.assertEqual(
             reader.compressed_bytes_processed, len(compress(V3_FILE.encode()))
@@ -989,7 +990,7 @@ class S3FlowLogsReaderTestCase(TestCase):
             },
         ]
         self.thread_count = 2
-        self._test_iteration(V3_FILE, expected)
+        self._test_iteration(V3_FILE, expected, check_column_count=True)
 
 
 class AggregationTestCase(TestCase):
