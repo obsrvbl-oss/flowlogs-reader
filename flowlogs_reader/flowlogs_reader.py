@@ -357,18 +357,18 @@ class FlowLogsReader(BaseReader):
                         try: 
                             flow = FlowRecord.from_cwl_event(event, self.fields)
                             yield flow
-                        except Exception as err:
+                        except Exception:
                             self.skipped_records += 1
-                            yield err
+                            continue
                         
         else:
             for event in self._read_streams():
                 try: 
                     flow = FlowRecord.from_cwl_event(event, self.fields)
                     yield flow
-                except Exception as err:
+                except Exception:
                     self.skipped_records += 1
-                    yield err
+                    continue
 
 
 
@@ -508,7 +508,7 @@ class S3FlowLogsReader(BaseReader):
             try: 
                 flow = FlowRecord(event_data)
                 yield flow
-            except Exception as err:
+            except Exception:
                 self.skipped_records += 1
-                yield err
+                continue
 
