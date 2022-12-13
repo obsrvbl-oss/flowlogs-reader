@@ -351,10 +351,21 @@ class FlowLogsReader(BaseReader):
                 func = lambda x: list(self._read_streams(x))
                 for events in executor.map(func, all_streams):
                     for event in events:
-                        yield FlowRecord.from_cwl_event(event, self.fields)
+                        try: 
+                            flow = FlowRecord.from_cwl_event(event, self.fields)
+                            yield flow
+                        except ValueError as ve:
+                            print('[ERROR] FlowRecord line ValueError, continuing...')
+                            continue
+                        
         else:
             for event in self._read_streams():
-                yield FlowRecord.from_cwl_event(event, self.fields)
+                try: 
+                    flow = FlowRecord.from_cwl_event(event, self.fields)
+                    yield flow
+                except ValueError as ve:
+                    print('[ERROR] FlowRecord line ValueError, continuing...')
+                    continue
 
 
 class S3FlowLogsReader(BaseReader):
@@ -490,4 +501,9 @@ class S3FlowLogsReader(BaseReader):
 
     def _reader(self):
         for event_data in self._read_streams():
-            yield FlowRecord(event_data)
+            try: 
+                flow = FlowRecord(event_data)
+                yield flow
+            except ValueError as ve:
+                print('[ERROR] FlowRecord line ValueError, continuing...')
+                continue
