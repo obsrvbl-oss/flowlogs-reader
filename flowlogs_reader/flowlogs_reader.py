@@ -417,19 +417,6 @@ class S3FlowLogsReader(BaseReader):
             None if include_regions is None else set(include_regions)
         )
 
-    def _check_csv_row(self, row):
-        # Reject a CSV row if it has too many columns (restkey=None by default)
-        if None in row:
-            return False
-
-        # Reject a CSV row if it has too few columns (restval=None by default)
-        if any(v is None for v in row.values()):
-            return False
-
-        # Accept a CSV row if it has the correct number of columns. It still may
-        # have values in the wrong place, making them un-interpretable.
-        return True
-
     def _read_file(self, key):
         resp = self.boto_client.get_object(Bucket=self.bucket, Key=key)
         if key.endswith('.parquet'):
@@ -445,10 +432,7 @@ class S3FlowLogsReader(BaseReader):
                 reader.fieldnames = [
                     f.replace('-', '_') for f in reader.fieldnames
                 ]
-                valid_rows = (
-                    row for row in reader if self._check_csv_row(row)
-                )
-                yield from valid_rows
+                yield from reader
                 with THREAD_LOCK:
                     self.bytes_processed += gz_f.tell()
                     self.compressed_bytes_processed += resp['ContentLength']
