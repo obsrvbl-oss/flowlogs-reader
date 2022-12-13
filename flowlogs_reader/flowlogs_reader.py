@@ -400,7 +400,6 @@ class S3FlowLogsReader(BaseReader):
         include_accounts=None,
         include_regions=None,
         thread_count=0,
-        check_column_count=False,
         **kwargs,
     ):
         super().__init__('s3', **kwargs)
@@ -408,7 +407,6 @@ class S3FlowLogsReader(BaseReader):
         location_parts = (location.rstrip('/') + '/').split('/', 1)
         self.bucket, self.prefix = location_parts
         self.thread_count = thread_count
-        self.check_column_count = check_column_count
 
         self.compressed_bytes_processed = 0
 
@@ -447,11 +445,10 @@ class S3FlowLogsReader(BaseReader):
                 reader.fieldnames = [
                     f.replace('-', '_') for f in reader.fieldnames
                 ]
-                if self.check_column_count:
-                    reader = (
-                        row for row in reader if self._check_csv_row(row)
-                    )
-                yield from reader
+                valid_rows = (
+                    row for row in reader if self._check_csv_row(row)
+                )
+                yield from valid_rows
                 with THREAD_LOCK:
                     self.bytes_processed += gz_f.tell()
                     self.compressed_bytes_processed += resp['ContentLength']
