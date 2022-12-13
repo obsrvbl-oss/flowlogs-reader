@@ -229,6 +229,8 @@ class BaseReader:
         self.bytes_processed = 0
         self.iterator = self._reader()
 
+        self.skipped_records = 0
+
     def __iter__(self):
         return self
 
@@ -279,6 +281,7 @@ class FlowLogsReader(BaseReader):
 
         self.start_ms = timegm(self.start_time.utctimetuple()) * 1000
         self.end_ms = timegm(self.end_time.utctimetuple()) * 1000
+        self.skipped_records = 0
 
     def _get_fields(self, region_name, log_group_name, ec2_client=None):
         if ec2_client is None:
@@ -354,7 +357,8 @@ class FlowLogsReader(BaseReader):
                         try: 
                             flow = FlowRecord.from_cwl_event(event, self.fields)
                             yield flow
-                        except ValueError as err:
+                        except Exception as err:
+                            self.skipped_records += 1
                             yield err
                         
         else:
@@ -362,7 +366,8 @@ class FlowLogsReader(BaseReader):
                 try: 
                     flow = FlowRecord.from_cwl_event(event, self.fields)
                     yield flow
-                except ValueError as err:
+                except Exception as err:
+                    self.skipped_records += 1
                     yield err
 
 
@@ -503,6 +508,7 @@ class S3FlowLogsReader(BaseReader):
             try: 
                 flow = FlowRecord(event_data)
                 yield flow
-            except ValueError as err:
+            except Exception as err:
+                self.skipped_records += 1
                 yield err
 
