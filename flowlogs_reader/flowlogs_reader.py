@@ -354,7 +354,7 @@ class FlowLogsReader(BaseReader):
                         try: 
                             flow = FlowRecord.from_cwl_event(event, self.fields)
                             yield flow
-                        except ValueError as ve:
+                        except ValueError:
                             print('[ERROR] FlowRecord line ValueError, continuing...')
                             continue
                         
@@ -363,7 +363,7 @@ class FlowLogsReader(BaseReader):
                 try: 
                     flow = FlowRecord.from_cwl_event(event, self.fields)
                     yield flow
-                except ValueError as ve:
+                except ValueError:
                     print('[ERROR] FlowRecord line ValueError, continuing...')
                     continue
 
@@ -504,6 +504,6 @@ class S3FlowLogsReader(BaseReader):
             try: 
                 flow = FlowRecord(event_data)
                 yield flow
-            except ValueError as ve:
+            except ValueError:
                 print('[ERROR] FlowRecord line ValueError, continuing...')
                 continue
