@@ -213,6 +213,7 @@ class BaseReader:
         start_time=None,
         end_time=None,
         boto_client=None,
+        raise_on_error=False
     ):
         self.region_name = region_name
         if boto_client is not None:
@@ -230,6 +231,7 @@ class BaseReader:
         self.iterator = self._reader()
 
         self.skipped_records = 0
+        self.raise_on_error = raise_on_error
 
     def __iter__(self):
         return self
@@ -359,8 +361,8 @@ class FlowLogsReader(BaseReader):
                             yield flow
                         except Exception:
                             self.skipped_records += 1
-                            continue
-                        
+                            if self.raise_on_error:
+                                raise  
         else:
             for event in self._read_streams():
                 try: 
@@ -368,7 +370,8 @@ class FlowLogsReader(BaseReader):
                     yield flow
                 except Exception:
                     self.skipped_records += 1
-                    continue
+                    if self.raise_on_error:
+                        raise
 
 
 
@@ -510,5 +513,6 @@ class S3FlowLogsReader(BaseReader):
                 yield flow
             except Exception:
                 self.skipped_records += 1
-                continue
+                if self.raise_on_error:
+                    raise
 
