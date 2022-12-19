@@ -213,6 +213,7 @@ class BaseReader:
         start_time=None,
         end_time=None,
         boto_client=None,
+        raise_on_error=False
     ):
         self.region_name = region_name
         if boto_client is not None:
@@ -228,6 +229,9 @@ class BaseReader:
 
         self.bytes_processed = 0
         self.iterator = self._reader()
+
+        self.skipped_records = 0
+        self.raise_on_error = raise_on_error
 
     def __iter__(self):
         return self
@@ -279,6 +283,7 @@ class FlowLogsReader(BaseReader):
 
         self.start_ms = timegm(self.start_time.utctimetuple()) * 1000
         self.end_ms = timegm(self.end_time.utctimetuple()) * 1000
+        self.skipped_records = 0
 
     def _get_fields(self, region_name, log_group_name, ec2_client=None):
         if ec2_client is None:
@@ -351,10 +356,21 @@ class FlowLogsReader(BaseReader):
                 func = lambda x: list(self._read_streams(x))
                 for events in executor.map(func, all_streams):
                     for event in events:
-                        yield FlowRecord.from_cwl_event(event, self.fields)
+                        try: 
+                            yield FlowRecord.from_cwl_event(event, self.fields)
+                        except Exception:
+                            self.skipped_records += 1
+                            if self.raise_on_error:
+                                raise  
         else:
             for event in self._read_streams():
-                yield FlowRecord.from_cwl_event(event, self.fields)
+                try: 
+                    yield FlowRecord.from_cwl_event(event, self.fields)
+                except Exception:
+                    self.skipped_records += 1
+                    if self.raise_on_error:
+                        raise
+
 
 
 class S3FlowLogsReader(BaseReader):
@@ -490,4 +506,10 @@ class S3FlowLogsReader(BaseReader):
 
     def _reader(self):
         for event_data in self._read_streams():
-            yield FlowRecord(event_data)
+            try: 
+                yield FlowRecord(event_data)
+            except Exception:
+                self.skipped_records += 1
+                if self.raise_on_error:
+                    raise
+
