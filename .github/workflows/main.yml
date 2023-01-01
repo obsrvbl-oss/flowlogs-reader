@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9.0, 3.10.1, pypy3]
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "pypy-3.8"]
 
     steps:
     - uses: actions/checkout@v2
@@ -34,18 +34,18 @@ jobs:
       run: |
         flake8 .
     - name: Check formatting with black
-      if: "matrix.python-version == '3.6'"
+      if: "matrix.python-version == '3.8'"
       run: |
         pip install -U black
         black --check .
     - name: Build packages
-      if: "matrix.python-version == '3.6'"
+      if: "matrix.python-version == '3.8'"
       run: |
         pip install -U twine wheel
         python setup.py sdist bdist_wheel
         twine check dist/*
     - name: Upload packages
-      if: "matrix.python-version == '3.6'"
+      if: "matrix.python-version == '3.8'"
       uses: actions/upload-artifact@v2
       with:
         name: flowlogs-reader-packages
