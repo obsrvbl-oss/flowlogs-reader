@@ -249,7 +249,7 @@ class BaseReader:
         start_time=None,
         end_time=None,
         boto_client=None,
-        raise_on_error=False
+        raise_on_error=False,
     ):
         self.region_name = region_name
         if boto_client is not None:
@@ -392,21 +392,20 @@ class FlowLogsReader(BaseReader):
                 func = lambda x: list(self._read_streams(x))
                 for events in executor.map(func, all_streams):
                     for event in events:
-                        try: 
+                        try:
                             yield FlowRecord.from_cwl_event(event, self.fields)
                         except Exception:
                             self.skipped_records += 1
                             if self.raise_on_error:
-                                raise  
+                                raise
         else:
             for event in self._read_streams():
-                try: 
+                try:
                     yield FlowRecord.from_cwl_event(event, self.fields)
                 except Exception:
                     self.skipped_records += 1
                     if self.raise_on_error:
                         raise
-
 
 
 class S3FlowLogsReader(BaseReader):
@@ -542,10 +541,9 @@ class S3FlowLogsReader(BaseReader):
 
     def _reader(self):
         for event_data in self._read_streams():
-            try: 
+            try:
                 yield FlowRecord(event_data)
             except Exception:
                 self.skipped_records += 1
                 if self.raise_on_error:
                     raise
-
