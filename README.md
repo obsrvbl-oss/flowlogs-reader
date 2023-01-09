@@ -1,7 +1,7 @@
 ## Introduction
 
-[![Build Status](https://travis-ci.org/obsrvbl-oss/flowlogs-reader.svg?branch=master)](https://travis-ci.org/obsrvbl-oss/flowlogs-reader)
-[![Coverage Status](https://coveralls.io/repos/obsrvbl-oss/flowlogs-reader/badge.svg?branch=master&service=github)](https://coveralls.io/github/obsrvbl-oss/flowlogs-reader?branch=master)
+[![Build Status](https://travis-ci.org/obsrvbl-oss/flowlogs-reader.svg?branch=main)](https://travis-ci.org/obsrvbl-oss/flowlogs-reader)
+[![Coverage Status](https://coveralls.io/repos/obsrvbl-oss/flowlogs-reader/badge.svg?branch=main&service=github)](https://coveralls.io/github/obsrvbl-oss/flowlogs-reader?branch=main)
 [![PyPI Version](https://img.shields.io/pypi/v/flowlogs_reader.svg)](https://pypi.python.org/pypi/flowlogs_reader)
 
 Amazon's VPC Flow Logs are analogous to NetFlow and IPFIX logs, and can be used for security and performance analysis.
