@@ -1,7 +1,7 @@
 ## Introduction
 
-[![Build Status](https://travis-ci.org/obsrvbl/flowlogs-reader.svg?branch=master)](https://travis-ci.org/obsrvbl/flowlogs-reader)
-[![Coverage Status](https://coveralls.io/repos/obsrvbl/flowlogs-reader/badge.svg?branch=master&service=github)](https://coveralls.io/github/obsrvbl/flowlogs-reader?branch=master)
+[![Build Status](https://travis-ci.org/obsrvbl-oss/flowlogs-reader.svg?branch=master)](https://travis-ci.org/obsrvbl-oss/flowlogs-reader)
+[![Coverage Status](https://coveralls.io/repos/obsrvbl-oss/flowlogs-reader/badge.svg?branch=master&service=github)](https://coveralls.io/github/obsrvbl-oss/flowlogs-reader?branch=master)
 [![PyPI Version](https://img.shields.io/pypi/v/flowlogs_reader.svg)](https://pypi.python.org/pypi/flowlogs_reader)
 
 Amazon's VPC Flow Logs are analogous to NetFlow and IPFIX logs, and can be used for security and performance analysis.
@@ -17,7 +17,7 @@ For S3 destinations, [version 3](https://aws.amazon.com/blogs/aws/learn-from-you
 The library builds on [boto3](https://github.com/boto/boto3) and should work on the [supported versions](https://devguide.python.org/#status-of-python-branches) of Python 3.
 
 For information on VPC Flow Logs and how to enable them see [this post](https://aws.amazon.com/blogs/aws/vpc-flow-logs-log-and-view-network-traffic-flows/) at the AWS blog.
-You may use this library with the [kinesis-logs-reader](https://github.com/obsrvbl/kinesis-logs-reader) library when retrieving VPC flow logs from Amazon Kinesis.
+You may use this library with the [kinesis-logs-reader](https://github.com/obsrvbl-oss/kinesis-logs-reader) library when retrieving VPC flow logs from Amazon Kinesis.
 
 
 ## Installation
@@ -31,7 +31,7 @@ pip install flowlogs_reader
 Or if you want to install from source and/or contribute you can clone from GitHub:
 
 ```
-git clone https://github.com/obsrvbl/flowlogs-reader.git
+git clone https://github.com/obsrvbl-oss/flowlogs-reader.git
 cd flowlogs-reader
 python setup.py develop
 ```
