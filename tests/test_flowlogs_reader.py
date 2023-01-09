@@ -97,6 +97,7 @@ V5_FILE = (
     'egress i-00123456789abcdef eni-00123456789abcdef OK 16 S3 198.51.100.7 '
     '- 192.0.2.156 6 us-east-2 192.0.2.156 50318 1614866493 - - '
     'subnet-0123456789abcdef 7 7 IPv4 5 vpc-04456ab739938ee3f\n'
+    'bogus line\n'
 )
 V6_FILE = (
     'resource-type tgw-id tgw-attachment-id tgw-src-vpc-account-id '
@@ -318,6 +319,7 @@ class FlowLogsReaderTestCase(TestCase):
                     {'logStreamName': 'log_0', 'message': V2_RECORDS[2]},
                     {'logStreamName': 'log_1', 'message': V2_RECORDS[3]},
                     {'logStreamName': 'log_2', 'message': V2_RECORDS[4]},
+                    {'logStreamName': 'log_2', 'message': 'bogus!'},
                 ],
             },
         ]
@@ -330,6 +332,7 @@ class FlowLogsReaderTestCase(TestCase):
             FlowRecord.from_cwl_event({'message': x}) for x in V2_RECORDS
         ]
         self.assertEqual(actual, expected)
+        self.assertEqual(self.inst.skipped_records, 1)
 
         expected_bytes = 0
         all_pages = paginator.paginate.return_value
