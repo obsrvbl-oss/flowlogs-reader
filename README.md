@@ -1,6 +1,6 @@
 ## Introduction
 
-[![Build Status](https://travis-ci.org/obsrvbl-oss/flowlogs-reader.svg?branch=main)](https://travis-ci.org/obsrvbl-oss/flowlogs-reader)
+[![Build Status](https://github.com/obsrvbl-oss/flowlogs-reader/actions/workflows/main.yml/badge.svg)](https://github.com/obsrvbl-oss/flowlogs-reader/actions/workflows/main.yml)
 [![Coverage Status](https://coveralls.io/repos/obsrvbl-oss/flowlogs-reader/badge.svg?branch=main&service=github)](https://coveralls.io/github/obsrvbl-oss/flowlogs-reader?branch=main)
 [![PyPI Version](https://img.shields.io/pypi/v/flowlogs_reader.svg)](https://pypi.python.org/pypi/flowlogs_reader)
 
