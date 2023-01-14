@@ -563,7 +563,7 @@ class LocalFileReader(BaseReader):
 
     def _read_file(self, file_path):
         with gz_open(file_path, mode='rt') as gz_f:
-            reader = DictReader(gz_f, delimiter=' ')
+            reader = csv_dict_reader(gz_f, delimiter=' ')
             reader.fieldnames = [
                 f.replace('-', '_') for f in reader.fieldnames
             ]
