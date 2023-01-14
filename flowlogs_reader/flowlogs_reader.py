@@ -14,7 +14,7 @@
 
 from calendar import timegm
 from concurrent.futures import ThreadPoolExecutor
-from csv import DictReader
+from csv import DictReader as csv_dict_reader
 from datetime import datetime, timedelta
 from gzip import open as gz_open
 from os.path import basename
@@ -22,9 +22,11 @@ from pathlib import Path
 from threading import Lock
 
 import boto3
+import io
 
 from botocore.exceptions import PaginationError
 from dateutil.rrule import rrule, DAILY
+from parquet import DictReader as parquet_dict_reader
 
 DEFAULT_FIELDS = (
     'version',
@@ -93,6 +95,24 @@ class FlowRecord:
         'pkt_dst_aws_service',
         'flow_direction',
         'traffic_path',
+        'resource_type',
+        'tgw_id',
+        'tgw_attachment_id',
+        'tgw_src_vpc_account_id',
+        'tgw_dst_vpc_account_id',
+        'tgw_src_vpc_id',
+        'tgw_dst_vpc_id',
+        'tgw_src_subnet_id',
+        'tgw_dst_subnet_id',
+        'tgw_src_eni',
+        'tgw_dst_eni',
+        'tgw_src_az_id',
+        'tgw_dst_az_id',
+        'tgw_pair_attachment_id',
+        'packets_lost_no_route',
+        'packets_lost_blackhole',
+        'packets_lost_mtu_exceeded',
+        'packets_lost_ttl_expired',
     ]
 
     def __init__(self, event_data, EPOCH_32_MAX=2147483647):
@@ -143,9 +163,31 @@ class FlowRecord:
             ('pkt_dst_aws_service', str),
             ('flow_direction', str),
             ('traffic_path', int),
+            ('resource_type', str),
+            ('tgw_id', str),
+            ('tgw_attachment_id', str),
+            ('tgw_src_vpc_account_id', str),
+            ('tgw_dst_vpc_account_id', str),
+            ('tgw_src_vpc_id', str),
+            ('tgw_dst_vpc_id', str),
+            ('tgw_src_subnet_id', str),
+            ('tgw_dst_subnet_id', str),
+            ('tgw_src_eni', str),
+            ('tgw_dst_eni', str),
+            ('tgw_src_az_id', str),
+            ('tgw_dst_az_id', str),
+            ('tgw_pair_attachment_id', str),
+            ('packets_lost_no_route', int),
+            ('packets_lost_blackhole', int),
+            ('packets_lost_mtu_exceeded', int),
+            ('packets_lost_ttl_expired', int),
         ):
             value = event_data.get(key, '-')
-            value = None if (value == '-') else func(value)
+            if value == '-' or value == 'None' or value is None:
+                value = None
+            else:
+                value = func(value)
+
             setattr(self, key, value)
 
     def __eq__(self, other):
@@ -207,6 +249,7 @@ class BaseReader:
         start_time=None,
         end_time=None,
         boto_client=None,
+        raise_on_error=False,
     ):
         # If no time filters are given use the last hour
         now = datetime.utcnow()
@@ -215,6 +258,9 @@ class BaseReader:
 
         self.bytes_processed = 0
         self.iterator = self._reader()
+
+        self.skipped_records = 0
+        self.raise_on_error = raise_on_error
 
     def __iter__(self):
         return self
@@ -280,6 +326,7 @@ class FlowLogsReader(AWSReader):
 
         self.start_ms = timegm(self.start_time.utctimetuple()) * 1000
         self.end_ms = timegm(self.end_time.utctimetuple()) * 1000
+        self.skipped_records = 0
 
     def _get_fields(self, region_name, log_group_name, ec2_client=None):
         if ec2_client is None:
@@ -352,10 +399,20 @@ class FlowLogsReader(AWSReader):
                 func = lambda x: list(self._read_streams(x))
                 for events in executor.map(func, all_streams):
                     for event in events:
-                        yield FlowRecord.from_cwl_event(event, self.fields)
+                        try:
+                            yield FlowRecord.from_cwl_event(event, self.fields)
+                        except Exception:
+                            self.skipped_records += 1
+                            if self.raise_on_error:
+                                raise
         else:
             for event in self._read_streams():
-                yield FlowRecord.from_cwl_event(event, self.fields)
+                try:
+                    yield FlowRecord.from_cwl_event(event, self.fields)
+                except Exception:
+                    self.skipped_records += 1
+                    if self.raise_on_error:
+                        raise
 
 
 class S3FlowLogsReader(AWSReader):
@@ -373,6 +430,8 @@ class S3FlowLogsReader(AWSReader):
         self.bucket, self.prefix = location_parts
         self.thread_count = thread_count
 
+        self.compressed_bytes_processed = 0
+
         self.include_accounts = (
             None if include_accounts is None else set(include_accounts)
         )
@@ -382,14 +441,23 @@ class S3FlowLogsReader(AWSReader):
 
     def _read_file(self, key):
         resp = self.boto_client.get_object(Bucket=self.bucket, Key=key)
-        with gz_open(resp['Body'], mode='rt') as gz_f:
-            reader = DictReader(gz_f, delimiter=' ')
-            reader.fieldnames = [
-                f.replace('-', '_') for f in reader.fieldnames
-            ]
+        if key.endswith('.parquet'):
+            body = resp['Body'].read()
+            reader = parquet_dict_reader(io.BytesIO(body))
             yield from reader
             with THREAD_LOCK:
-                self.bytes_processed += gz_f.tell()
+                self.bytes_processed += len(body)
+                self.compressed_bytes_processed += resp['ContentLength']
+        else:
+            with gz_open(resp['Body'], mode='rt') as gz_f:
+                reader = csv_dict_reader(gz_f, delimiter=' ')
+                reader.fieldnames = [
+                    f.replace('-', '_') for f in reader.fieldnames
+                ]
+                yield from reader
+                with THREAD_LOCK:
+                    self.bytes_processed += gz_f.tell()
+                    self.compressed_bytes_processed += resp['ContentLength']
 
     def _get_keys(self, prefix):
         # S3 keys have a file name like:
@@ -480,7 +548,12 @@ class S3FlowLogsReader(AWSReader):
 
     def _reader(self):
         for event_data in self._read_streams():
-            yield FlowRecord(event_data)
+            try:
+                yield FlowRecord(event_data)
+            except Exception:
+                self.skipped_records += 1
+                if self.raise_on_error:
+                    raise
 
 
 class LocalFileReader(BaseReader):
@@ -503,4 +576,9 @@ class LocalFileReader(BaseReader):
         all_files = path.glob('*.log.gz') if path.is_dir() else [path]
         for file_path in all_files:
             for event_data in self._read_file(file_path):
+            try:
                 yield FlowRecord(event_data)
+            except Exception:
+                self.skipped_records += 1
+                if self.raise_on_error:
+                    raise
