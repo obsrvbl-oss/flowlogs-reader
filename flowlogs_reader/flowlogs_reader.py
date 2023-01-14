@@ -576,9 +576,9 @@ class LocalFileReader(BaseReader):
         all_files = path.glob('*.log.gz') if path.is_dir() else [path]
         for file_path in all_files:
             for event_data in self._read_file(file_path):
-            try:
-                yield FlowRecord(event_data)
-            except Exception:
-                self.skipped_records += 1
-                if self.raise_on_error:
-                    raise
+                try:
+                    yield FlowRecord(event_data)
+                except Exception:
+                    self.skipped_records += 1
+                    if self.raise_on_error:
+                        raise
