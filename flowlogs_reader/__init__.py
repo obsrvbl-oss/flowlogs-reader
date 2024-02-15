@@ -16,6 +16,7 @@ from .aggregation import aggregated_records
 from .flowlogs_reader import (
     FlowRecord,
     FlowLogsReader,
+    LocalFileReader,
     S3FlowLogsReader,
 )
 
@@ -23,5 +24,6 @@ __all__ = [
     'aggregated_records',
     'FlowRecord',
     'FlowLogsReader',
+    'LocalFileReader',
     'S3FlowLogsReader',
 ]

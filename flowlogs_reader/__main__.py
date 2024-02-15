@@ -23,6 +23,7 @@ import boto3
 from .aggregation import aggregated_records
 from .flowlogs_reader import (
     FlowLogsReader,
+    LocalFileReader,
     NODATA,
     S3FlowLogsReader,
     SKIPDATA,
@@ -104,6 +105,8 @@ def get_reader(args):
     elif args.location_type == 's3':
         cls = S3FlowLogsReader
         client_type = 's3'
+    elif args.location_type == 'file':
+        cls = LocalFileReader
 
     if args.region:
         kwargs['region_name'] = args.region
@@ -179,7 +182,7 @@ def main(argv=None):
         '--location-type',
         type=str,
         help='location type (CloudWatch Logs or S3), default is cwl',
-        choices=['cwl', 's3'],
+        choices=['cwl', 's3', 'file'],
         default='cwl',
     )
     parser.add_argument(

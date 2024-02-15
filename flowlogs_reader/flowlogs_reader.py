@@ -18,7 +18,7 @@ from csv import DictReader as csv_dict_reader
 from datetime import datetime, timedelta
 from gzip import open as gz_open
 from os.path import basename
-from parquet import DictReader as parquet_dict_reader
+from pathlib import Path
 from threading import Lock
 
 import boto3
@@ -26,6 +26,7 @@ import io
 
 from botocore.exceptions import PaginationError
 from dateutil.rrule import rrule, DAILY
+from parquet import DictReader as parquet_dict_reader
 
 DEFAULT_FIELDS = (
     'version',
@@ -244,20 +245,12 @@ class FlowRecord:
 class BaseReader:
     def __init__(
         self,
-        client_type,
         region_name=None,
         start_time=None,
         end_time=None,
         boto_client=None,
         raise_on_error=False,
     ):
-        self.region_name = region_name
-        if boto_client is not None:
-            self.boto_client = boto_client
-        else:
-            kwargs = {'region_name': region_name} if region_name else {}
-            self.boto_client = boto3.client(client_type, **kwargs)
-
         # If no time filters are given use the last hour
         now = datetime.utcnow()
         self.start_time = start_time or now - timedelta(hours=1)
@@ -276,7 +269,21 @@ class BaseReader:
         return next(self.iterator)
 
 
-class FlowLogsReader(BaseReader):
+class AWSReader(BaseReader):
+    def __init__(
+        self, client_type, region_name=None, boto_client=None, **kwargs
+    ):
+        self.region_name = region_name
+        if boto_client is not None:
+            self.boto_client = boto_client
+        else:
+            client_kwargs = {'region_name': region_name} if region_name else {}
+            self.boto_client = boto3.client(client_type, **client_kwargs)
+
+        super().__init__(**kwargs)
+
+
+class FlowLogsReader(AWSReader):
     """
     Returns an object that will yield VPC Flow Log records as Python objects.
     * `log_group_name` is the name of the CloudWatch Logs group that stores
@@ -408,7 +415,7 @@ class FlowLogsReader(BaseReader):
                         raise
 
 
-class S3FlowLogsReader(BaseReader):
+class S3FlowLogsReader(AWSReader):
     def __init__(
         self,
         location,
@@ -547,3 +554,31 @@ class S3FlowLogsReader(BaseReader):
                 self.skipped_records += 1
                 if self.raise_on_error:
                     raise
+
+
+class LocalFileReader(BaseReader):
+    def __init__(self, location, **kwargs):
+        self.location = location
+        super().__init__(**kwargs)
+
+    def _read_file(self, file_path):
+        with gz_open(file_path, mode='rt') as gz_f:
+            reader = csv_dict_reader(gz_f, delimiter=' ')
+            reader.fieldnames = [
+                f.replace('-', '_') for f in reader.fieldnames
+            ]
+            yield from reader
+            with THREAD_LOCK:
+                self.bytes_processed += gz_f.tell()
+
+    def _reader(self):
+        path = Path(self.location)
+        all_files = path.glob('*.log.gz') if path.is_dir() else [path]
+        for file_path in all_files:
+            for event_data in self._read_file(file_path):
+                try:
+                    yield FlowRecord(event_data)
+                except Exception:
+                    self.skipped_records += 1
+                    if self.raise_on_error:
+                        raise

@@ -342,3 +342,15 @@ class MainTestCase(TestCase):
             __, args, kwargs = call
             line = args[0]
             self.assertEqual(line, record)
+
+    @patch('flowlogs_reader.__main__.LocalFileReader', autospec=True)
+    @patch('flowlogs_reader.__main__.print', create=True)
+    def test_file_destination(self, mock_out, mock_reader):
+        mock_out.stdout = io.BytesIO()
+        mock_reader.return_value = SAMPLE_RECORDS
+        main(['--location-type', 'file', '/tmp/test-file.csv.gz'])
+        mock_reader.assert_called_once_with(location='/tmp/test-file.csv.gz')
+        for call, record in zip_longest(mock_out.mock_calls, SAMPLE_INPUT):
+            __, args, kwargs = call
+            line = args[0]
+            self.assertEqual(line, record)
