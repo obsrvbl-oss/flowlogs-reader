@@ -108,6 +108,29 @@ V6_FILE = (
     '00000006 00000007 00000008 00000009 00000010 00000011 00000012 13 14 15 '
     '16\n'
 )
+V7_FILE = (
+    'ecs_task_id '
+    'ecs_task_arn '
+    'ecs_task_definition_arn '
+    'ecs_cluster_name '
+    'ecs_cluster_arn '
+    'ecs_container_instance_id '
+    'ecs_container_instance_arn '
+    'ecs_container_id '
+    'ecs_second_container_id '
+    'ecs_service_name\n'
+    '6c8cdac4c319 '
+    'arn:aws:ecs:us-east-1:000000000000:task/OBSRVBL-ECS/6c8cdac4c319 '
+    'arn:aws:ecs:us-east-1:000000000000:task-definition/onadef:2 '
+    'OBSRVBL-ECS '
+    'arn:aws:ecs:us-east-1:000000000000:cluster/OBSRVBL-ECS '
+    '6cc25ce996cf '
+    'arn:aws:ecs:us-east-1:000000000000:container-instance/OBSRVBL-ECS'
+    '/6cc25ce996cf '
+    'f33bbef0bd73 '
+    '83d172ddeb44 '
+    'ona\n'
+)
 
 PARQUET_FILE = 'tests/data/flows.parquet'
 
@@ -797,6 +820,38 @@ class S3FlowLogsReaderTestCase(TestCase):
         self.assertEqual(reader.bytes_processed, len(V6_FILE.encode()))
         self.assertEqual(
             reader.compressed_bytes_processed, len(compress(V6_FILE.encode()))
+        )
+
+    def test_serial_v7(self):
+        expected = [
+            {
+                'ecs_task_id': '6c8cdac4c319',
+                'ecs_task_arn': (
+                    'arn:aws:ecs:us-east-1:000000000000:task/OBSRVBL-ECS'
+                    '/6c8cdac4c319'
+                ),
+                'ecs_task_definition_arn': (
+                    'arn:aws:ecs:us-east-1:000000000000:task-definition'
+                    '/onadef:2'
+                ),
+                'ecs_cluster_name': 'OBSRVBL-ECS',
+                'ecs_cluster_arn': (
+                    'arn:aws:ecs:us-east-1:000000000000:cluster/OBSRVBL-ECS'
+                ),
+                'ecs_container_instance_id': '6cc25ce996cf',
+                'ecs_container_instance_arn': (
+                    'arn:aws:ecs:us-east-1:000000000000:container-instance'
+                    '/OBSRVBL-ECS/6cc25ce996cf'
+                ),
+                'ecs_container_id': 'f33bbef0bd73',
+                'ecs_second_container_id': '83d172ddeb44',
+                'ecs_service_name': 'ona',
+            },
+        ]
+        reader = self._test_iteration(V7_FILE, expected)
+        self.assertEqual(reader.bytes_processed, len(V7_FILE.encode()))
+        self.assertEqual(
+            reader.compressed_bytes_processed, len(compress(V7_FILE.encode()))
         )
 
     def _test_parquet_reader(self, data, expected):

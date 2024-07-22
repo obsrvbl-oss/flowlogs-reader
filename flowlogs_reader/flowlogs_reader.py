@@ -112,6 +112,16 @@ class FlowRecord:
         'packets_lost_blackhole',
         'packets_lost_mtu_exceeded',
         'packets_lost_ttl_expired',
+        'ecs_task_id',
+        'ecs_task_arn',
+        'ecs_task_definition_arn',
+        'ecs_cluster_name',
+        'ecs_cluster_arn',
+        'ecs_container_instance_id',
+        'ecs_container_instance_arn',
+        'ecs_container_id',
+        'ecs_second_container_id',
+        'ecs_service_name',
     ]
 
     def __init__(self, event_data, EPOCH_32_MAX=2147483647):
@@ -180,6 +190,16 @@ class FlowRecord:
             ('packets_lost_blackhole', int),
             ('packets_lost_mtu_exceeded', int),
             ('packets_lost_ttl_expired', int),
+            ('ecs_task_id', str),
+            ('ecs_task_arn', str),
+            ('ecs_task_definition_arn', str),
+            ('ecs_cluster_name', str),
+            ('ecs_cluster_arn', str),
+            ('ecs_container_instance_id', str),
+            ('ecs_container_instance_arn', str),
+            ('ecs_container_id', str),
+            ('ecs_second_container_id', str),
+            ('ecs_service_name', str),
         ):
             value = event_data.get(key, '-')
             if value == '-' or value == 'None' or value is None:
@@ -249,7 +269,7 @@ class BaseReader:
         start_time=None,
         end_time=None,
         boto_client=None,
-        raise_on_error=False
+        raise_on_error=False,
     ):
         self.region_name = region_name
         if boto_client is not None:
@@ -392,21 +412,20 @@ class FlowLogsReader(BaseReader):
                 func = lambda x: list(self._read_streams(x))
                 for events in executor.map(func, all_streams):
                     for event in events:
-                        try: 
+                        try:
                             yield FlowRecord.from_cwl_event(event, self.fields)
                         except Exception:
                             self.skipped_records += 1
                             if self.raise_on_error:
-                                raise  
+                                raise
         else:
             for event in self._read_streams():
-                try: 
+                try:
                     yield FlowRecord.from_cwl_event(event, self.fields)
                 except Exception:
                     self.skipped_records += 1
                     if self.raise_on_error:
                         raise
-
 
 
 class S3FlowLogsReader(BaseReader):
@@ -542,10 +561,9 @@ class S3FlowLogsReader(BaseReader):
 
     def _reader(self):
         for event_data in self._read_streams():
-            try: 
+            try:
                 yield FlowRecord(event_data)
             except Exception:
                 self.skipped_records += 1
                 if self.raise_on_error:
                     raise
-
