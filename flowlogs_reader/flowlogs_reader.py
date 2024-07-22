@@ -112,6 +112,16 @@ class FlowRecord:
         'packets_lost_blackhole',
         'packets_lost_mtu_exceeded',
         'packets_lost_ttl_expired',
+        'ecs_task_id',
+        'ecs_task_arn',
+        'ecs_task_definition_arn',
+        'ecs_cluster_name',
+        'ecs_cluster_arn',
+        'ecs_container_instance_id',
+        'ecs_container_instance_arn',
+        'ecs_container_id',
+        'ecs_second_container_id',
+        'ecs_service_name',
     ]
 
     def __init__(self, event_data, EPOCH_32_MAX=2147483647):
@@ -180,6 +190,16 @@ class FlowRecord:
             ('packets_lost_blackhole', int),
             ('packets_lost_mtu_exceeded', int),
             ('packets_lost_ttl_expired', int),
+            ('ecs_task_id', str),
+            ('ecs_task_arn', str),
+            ('ecs_task_definition_arn', str),
+            ('ecs_cluster_name', str),
+            ('ecs_cluster_arn', str),
+            ('ecs_container_instance_id', str),
+            ('ecs_container_instance_arn', str),
+            ('ecs_container_id', str),
+            ('ecs_second_container_id', str),
+            ('ecs_service_name', str),
         ):
             value = event_data.get(key, '-')
             if value == '-' or value == 'None' or value is None:
